@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import 'tracking_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -242,11 +243,12 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.location_searching,
                           label: 'Live\nTracking',
                           onTap: () {
-                            if (provider.isLocationSharing) {
-                              provider.stopLocationSharing();
-                            } else {
-                              provider.startLocationSharing();
-                            }
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const TrackingScreen(),
+                              ),
+                            );
                           },
                           isActive: provider.isLocationSharing,
                         ),

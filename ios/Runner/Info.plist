@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Women Safety</string>
+	<string>SafeHer</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>women_safety</string>
+	<string>SafeHer</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -31,8 +31,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
@@ -45,5 +43,48 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!-- Location Permissions -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SafeHer needs your location to share with emergency contacts during SOS alerts and to show your current position on the map.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SafeHer needs continuous location access to monitor your safety, detect if you're stationary too long, and share your location with trusted contacts even when the app is in the background.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>SafeHer needs continuous location access to keep you safe by monitoring your location and alerting contacts if needed.</string>
+
+	<!-- Background Modes -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>location</string>
+		<string>processing</string>
+		<string>remote-notification</string>
+	</array>
+
+	<!-- Camera Permission -->
+	<key>NSCameraUsageDescription</key>
+	<string>SafeHer needs camera access to capture photo evidence when reporting harassment incidents.</string>
+
+	<!-- Photo Library Permission -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SafeHer needs photo library access to attach existing photos to harassment reports.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>SafeHer needs permission to save photos taken as evidence.</string>
+
+	<!-- Contacts Permission -->
+	<key>NSContactsUsageDescription</key>
+	<string>SafeHer needs contacts access to help you quickly add trusted contacts and emergency contacts from your address book.</string>
+
+	<!-- Microphone (for future audio recording) -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SafeHer may use the microphone to record audio evidence in emergency situations.</string>
+
+	<!-- Face ID (for app lock feature) -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>SafeHer can use Face ID to securely unlock the app and protect your privacy.</string>
+
+	<!-- Google Maps API Key -->
+	<key>GMSApiKey</key>
+	<string>YOUR_GOOGLE_MAPS_API_KEY</string>
 </dict>
 </plist>
