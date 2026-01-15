@@ -7,9 +7,14 @@ import 'screens/contacts_screen.dart';
 import 'screens/escort_screen.dart';
 import 'screens/report_screen.dart';
 import 'screens/settings_screen.dart';
+import 'services/firebase_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
+  await FirebaseService.instance.initialize();
+
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
