@@ -1,309 +1,270 @@
-# SafeHer - Development Roadmap
+# SafeHer - Development TODO
 
-## Architecture Overview
+> Last Updated: January 2025
 
+## Legend
+- ✅ Completed
+- 🔄 In Progress
+- ⏳ Pending
+- 🔮 Future Enhancement
+
+---
+
+## Phase 1 - Foundation ✅
+
+### Country Configuration ✅
+- [x] Create base country config class
+- [x] Create India configuration (112, 181, 1091)
+- [x] Create USA configuration (911, hotlines)
+- [x] Country detection & selection
+
+### Firebase Setup ✅
+- [x] Create Firebase project
+- [x] Add Android configuration
+- [x] Add iOS configuration
+- [x] Add Firebase dependencies
+- [x] Initialize Firebase in main.dart
+- [x] Set up Firestore security rules
+- [x] Set up Storage rules
+
+### User Authentication ✅
+- [x] Phone OTP authentication
+- [x] Auth state persistence
+- [x] User profile in Firestore
+
+---
+
+## Phase 2 - Core Features ✅
+
+### Cloud Contacts Sync ✅
+- [x] Firestore collection for contacts
+- [x] Migrate TrustedContact model
+- [x] Real-time sync
+- [x] Offline support
+
+### Background Location Tracking ✅
+- [x] Background location permissions
+- [x] flutter_background_service implementation
+- [x] Location history in Firestore
+- [x] Stationary detection
+- [ ] ⏳ Geofencing for safe zones
+- [ ] ⏳ Safety timeline view
+
+### Report Submission ✅
+- [x] Firestore report storage
+- [x] Image upload to Storage
+- [x] Report status tracking
+- [ ] ⏳ Offline report queue with auto-sync
+
+---
+
+## Phase 3 - Volunteer System ✅
+
+### Volunteer Registration ✅
+- [x] 3-stage registration flow
+- [x] Volunteer profile model
+- [x] Volunteer dashboard screen
+- [x] Service radius based on verification
+
+### ID Verification (KYC) ✅
+- [x] IDfy integration (India)
+- [x] Checkr integration (USA)
+- [x] Aadhaar verification
+- [x] Face match
+- [x] Liveness detection
+- [x] Document upload
+
+### Background Check ✅
+- [x] Criminal court records check
+- [x] Address verification
+- [x] Police verification
+- [x] Webhook handlers for results
+- [ ] ⏳ Periodic re-verification automation
+
+### Escort Matching
+- [x] Volunteer proximity calculation
+- [x] Availability checking
+- [ ] ⏳ Push notification for requests
+- [ ] ⏳ Real-time escort tracking map
+- [x] Post-escort rating system
+
+---
+
+## Phase 4 - Reporting Pipeline ✅
+
+### Admin Dashboard ✅
+- [x] Statistics tab
+- [x] Reports review tab
+- [x] Volunteers management tab
+- [x] Audit logs tab
+- [ ] ⏳ Flutter Web version for desktop access
+
+### NGO Partner Integration ✅
+- [x] NGO registration system
+- [x] NGO verification workflow
+- [x] Volunteer vouching
+- [x] Alert routing to NGOs
+- [x] Report forwarding
+- [ ] ⏳ Partner portal web app
+
+### Public Heatmap ✅
+- [x] Anonymized data aggregation
+- [x] Google Maps visualization
+- [x] Risk level classification
+- [x] City-wide statistics
+- [ ] ⏳ Public web view for heatmap
+- [ ] ⏳ Time-based filtering (week/month/year)
+
+### Authority Integration
+- [ ] ⏳ Research local authority APIs
+- [ ] ⏳ India NCRB integration
+- [ ] ⏳ USA local PD APIs
+- [x] Manual forwarding (implemented)
+- [ ] ⏳ Report reference number tracking
+
+---
+
+## Pending Features
+
+### High Priority ⏳
+
+#### Push Notifications
+- [ ] Firebase Cloud Messaging setup
+- [ ] SOS alert notifications to contacts
+- [ ] Escort request notifications to volunteers
+- [ ] Alert notifications to NGOs
+- [ ] Report status update notifications
+
+#### Real-time Escort Tracking
+- [ ] Live location sharing during escort
+- [ ] Map view for user and volunteer
+- [ ] ETA calculation
+- [ ] Route visualization
+
+#### Geofencing
+- [ ] Define safe zones (home, work, etc.)
+- [ ] Alert when entering/leaving zones
+- [ ] Automatic check-in notifications
+
+### Medium Priority ⏳
+
+#### UI/UX Improvements
+- [ ] Onboarding screens
+- [ ] Dark mode support
+- [ ] Language localization (Hindi for India)
+- [ ] Accessibility improvements
+
+#### Safety Timeline
+- [ ] Visual timeline of location history
+- [ ] Activity log view
+- [ ] Export location history
+
+#### Offline Enhancements
+- [ ] Offline report queue with auto-sync
+- [ ] Offline contact access
+- [ ] Cached map tiles
+
+### Low Priority / Future 🔮
+
+#### Wearable Integration
+- [ ] Apple Watch app
+- [ ] Wear OS app
+- [ ] Panic button on wearables
+
+#### Audio Recording
+- [ ] Background audio recording for evidence
+- [ ] Secure storage
+- [ ] Transcription
+
+#### AI Features
+- [ ] Voice-activated SOS
+- [ ] Anomaly detection in location patterns
+- [ ] Smart danger alerts
+
+#### Additional Integrations
+- [ ] Uber/Lyft integration for safe rides
+- [ ] Public transport safety integration
+- [ ] Hospital/clinic locator
+
+---
+
+## Technical Debt
+
+### Code Quality
+- [ ] Add unit tests for services
+- [ ] Add integration tests
+- [ ] Widget tests for screens
+- [ ] Fix deprecation warnings (withOpacity)
+
+### Performance
+- [ ] Optimize Firestore queries with indexes
+- [ ] Implement pagination for lists
+- [ ] Image compression before upload
+- [ ] Cache optimization
+
+### Security
+- [ ] Encrypt sensitive data at rest
+- [ ] API key management (environment variables)
+- [ ] Rate limiting
+- [ ] Input validation improvements
+
+---
+
+## Environment Setup Required
+
+### API Keys Needed
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        SafeHer App                              │
-├─────────────────────────────────────────────────────────────────┤
-│  Firebase Auth (Phone OTP)  │  Firestore DB  │  Cloud Storage   │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
-│  │   Users      │  │  Volunteers  │  │  Reports             │  │
-│  │  - contacts  │  │  - profile   │  │  - local storage     │  │
-│  │  - settings  │  │  - ID docs   │  │  - admin dashboard   │  │
-│  │  - location  │  │  - bg check  │  │  - NGO partners      │  │
-│  └──────────────┘  │  - rating    │  │  - public heatmap    │  │
-│                    │  - available │  │  - authority API     │  │
-│                    └──────────────┘  └──────────────────────────┘
-├─────────────────────────────────────────────────────────────────┤
-│  Country Configs: India (112, 181, 1091) │ USA (911, hotlines) │
-└─────────────────────────────────────────────────────────────────┘
-```
+# IDfy (India KYC/BGV)
+IDFY_API_KEY=
+IDFY_ACCOUNT_ID=
 
----
+# Checkr (USA Background Check)
+CHECKR_API_KEY=
 
-## Phase 1 - Foundation
+# Google Maps
+GOOGLE_MAPS_API_KEY=
 
-### Country Configuration
-- [ ] Create `lib/config/countries/base_country.dart` - Base class for country config
-- [ ] Create `lib/config/countries/india.dart` - India emergency numbers & helplines
-  - Emergency: 112
-  - Women Helpline: 181
-  - Women Police: 1091
-  - NCW Helpline: 7827-170-170
-  - Local NGOs: SafeCity, Sakhi, etc.
-- [ ] Create `lib/config/countries/usa.dart` - USA emergency numbers & helplines
-  - Emergency: 911
-  - National DV Hotline: 1-800-799-7233
-  - RAINN: 1-800-656-4673
-  - Local resources by state
-- [ ] Create `lib/config/country_config.dart` - Country detection & selection
-- [ ] Add country selector in settings screen
-
-### Firebase Setup
-- [ ] Create Firebase project in Firebase Console
-- [ ] Add Android configuration (`google-services.json`)
-- [ ] Add iOS configuration (`GoogleService-Info.plist`)
-- [ ] Add Firebase dependencies to `pubspec.yaml`
-  - firebase_core
-  - firebase_auth
-  - cloud_firestore
-  - firebase_storage
-- [ ] Initialize Firebase in `main.dart`
-- [ ] Set up Firestore security rules
-- [ ] Set up Firebase Storage rules
-
-### User Authentication
-- [ ] Implement phone OTP authentication
-- [ ] Add email/password as backup auth method
-- [ ] Create user profile screen
-- [ ] Store user profile in Firestore
-- [ ] Handle auth state persistence
-
----
-
-## Phase 2 - Core Features
-
-### Cloud Contacts Sync
-- [ ] Create Firestore collection structure for contacts
-- [ ] Migrate `TrustedContact` model to support Firestore
-- [ ] Update `AppProvider` to sync with Firestore
-- [ ] Add offline support with local cache
-- [ ] Implement real-time sync listeners
-
-### Background Location Tracking
-- [ ] Configure background location permissions (Android & iOS)
-- [ ] Implement `flutter_background_service` for continuous tracking
-- [ ] Create location history collection in Firestore
-- [ ] Add battery optimization settings
-- [ ] Implement geofencing for safe zones
-- [ ] Create safety timeline view
-
-### Report Submission to Firebase
-- [ ] Update `HarassmentReport` model for Firestore
-- [ ] Upload report images to Firebase Storage
-- [ ] Store reports in Firestore with encryption
-- [ ] Add report status tracking (pending, reviewed, forwarded)
-- [ ] Implement offline report queue
-
----
-
-## Phase 3 - Volunteer System
-
-### Volunteer Registration
-- [ ] Create volunteer registration flow
-- [ ] Design volunteer profile model
-  - Personal info (name, phone, photo)
-  - Verification status
-  - Availability schedule
-  - Service radius
-  - Rating & reviews
-- [ ] Create volunteer dashboard screen
-- [ ] Add volunteer mode toggle in app
-
-### ID Verification
-- [ ] Research verification providers (Onfido, Checkr, Jumio)
-- [ ] Integrate ID document upload
-- [ ] Implement selfie verification
-- [ ] Store verification status in Firestore
-- [ ] Create verification status badges
-
-### Background Check Integration
-- [ ] Partner with background check provider
-- [ ] Implement background check API integration
-- [ ] Handle check status updates (pending, cleared, flagged)
-- [ ] Create admin approval workflow
-- [ ] Add periodic re-verification
-
-### Escort Matching Algorithm
-- [ ] Calculate volunteer proximity to request location
-- [ ] Factor in volunteer ratings
-- [ ] Check volunteer availability
-- [ ] Implement request notification system
-- [ ] Create accept/decline flow for volunteers
-- [ ] Add real-time escort tracking
-- [ ] Implement post-escort rating system
-
----
-
-## Phase 4 - Reporting Pipeline
-
-### Admin Dashboard (Web)
-- [ ] Create Flutter Web or React admin dashboard
-- [ ] Implement admin authentication
-- [ ] Display pending reports queue
-- [ ] Add report review interface
-- [ ] Create forwarding workflow
-- [ ] Add analytics & statistics
-- [ ] Implement user/volunteer management
-
-### NGO Partner Integration
-- [ ] Research partner NGOs in India & USA
-  - India: SafeCity, Sakhi, Jagori, etc.
-  - USA: RAINN, NCADV, local organizations
-- [ ] Design API for NGO data sharing
-- [ ] Implement secure data transfer
-- [ ] Create partner portal for report access
-- [ ] Add consent management for data sharing
-
-### Public Heatmap
-- [ ] Design heatmap data aggregation (anonymized)
-- [ ] Create heatmap collection in Firestore
-- [ ] Implement map overlay with incident density
-- [ ] Add time-based filtering (last week, month, year)
-- [ ] Create public web view for heatmap
-- [ ] Ensure complete anonymization of data
-
-### Authority API Integration
-- [ ] Research local authority APIs (varies by region)
-- [ ] India: Investigate NCRB integration options
-- [ ] USA: Research local PD reporting APIs
-- [ ] Implement manual forwarding as fallback
-- [ ] Add report reference number tracking
-
----
-
-## Firebase Collections Structure
-
-```
-firestore/
-├── users/
-│   ├── {userId}/
-│   │   ├── profile (name, phone, email, country, createdAt)
-│   │   ├── settings (autoAlert, stationaryMinutes, language)
-│   │   └── contacts/ (subcollection)
-│   │       └── {contactId}/ (name, phone, isEmergency)
-│
-├── volunteers/
-│   ├── {volunteerId}/
-│   │   ├── profile (name, phone, photo, bio)
-│   │   ├── verification/
-│   │   │   ├── idDocUrl
-│   │   │   ├── idVerifiedAt
-│   │   │   ├── bgCheckStatus (pending, cleared, flagged)
-│   │   │   ├── bgCheckDate
-│   │   │   └── verificationLevel (basic, full, trusted)
-│   │   ├── availability/
-│   │   │   ├── isAvailable
-│   │   │   ├── schedule (day/time slots)
-│   │   │   ├── serviceRadius (km)
-│   │   │   └── currentLocation (geo)
-│   │   └── stats/
-│   │       ├── totalEscorts
-│   │       ├── averageRating
-│   │       └── ratingCount
-│
-├── reports/
-│   ├── {reportId}/
-│   │   ├── userId
-│   │   ├── type (verbal, physical, stalking, cyber, etc.)
-│   │   ├── description
-│   │   ├── location (geo)
-│   │   ├── address
-│   │   ├── imageUrls []
-│   │   ├── reportedAt
-│   │   ├── status (pending, reviewed, forwarded, resolved)
-│   │   ├── reviewedBy (adminId)
-│   │   ├── reviewedAt
-│   │   ├── forwardedTo (ngo, authority, heatmap)
-│   │   └── isAnonymous
-│
-├── escortRequests/
-│   ├── {requestId}/
-│   │   ├── userId
-│   │   ├── eventName
-│   │   ├── eventLocation (geo)
-│   │   ├── eventDateTime
-│   │   ├── notes
-│   │   ├── status (pending, confirmed, in_progress, completed, cancelled)
-│   │   ├── assignedVolunteerId
-│   │   ├── assignedAt
-│   │   ├── completedAt
-│   │   ├── userRating
-│   │   └── userFeedback
-│
-├── heatmapData/
-│   └── {geohash}/
-│       ├── incidentCount
-│       ├── lastUpdated
-│       └── types {} (counts by harassment type)
-│
-└── locationHistory/
-    └── {userId}/
-        └── {timestamp}/
-            ├── location (geo)
-            ├── address
-            └── accuracy
+# Firebase (already configured)
+# - google-services.json (Android)
+# - GoogleService-Info.plist (iOS)
 ```
 
----
-
-## Technical Decisions
-
-### Database: Firebase
-- **Why:** Easy setup, free tier sufficient for MVP, real-time sync, built-in auth
-- **Collections:** users, volunteers, reports, escortRequests, heatmapData, locationHistory
-
-### Volunteer Verification: Full Background Check
-- **Level 1:** Phone OTP verification
-- **Level 2:** Government ID upload + selfie verification (Onfido/Jumio)
-- **Level 3:** Criminal background check (Checkr or regional provider)
-- **Badge System:** Unverified → ID Verified → Background Cleared → Trusted (NGO vouched)
-
-### Report Submission: Multi-Channel
-1. **Firebase Storage:** All reports stored securely
-2. **Admin Dashboard:** Manual review and triage
-3. **NGO Partners:** Forwarded with user consent
-4. **Public Heatmap:** Anonymized aggregate data
-5. **Authorities:** API where available, manual forwarding otherwise
-
-### Country Support: India & USA
-- Separate config files for emergency numbers, helplines, NGOs
-- Language support: English (default), Hindi (India)
-- Region-specific features based on available APIs
+### Firebase Console Tasks
+- [ ] Enable Phone Authentication
+- [ ] Create Firestore indexes for queries
+- [ ] Set up Cloud Functions for webhooks
+- [ ] Configure FCM for push notifications
 
 ---
 
-## Dependencies to Add
+## Deployment Checklist
 
-```yaml
-# Firebase
-firebase_core: ^3.8.1
-firebase_auth: ^5.3.4
-cloud_firestore: ^5.6.0
-firebase_storage: ^12.4.0
+### Android
+- [ ] Update app signing keys
+- [ ] Configure ProGuard rules
+- [ ] Test release build
+- [ ] Prepare Play Store listing
+- [ ] Privacy policy URL
 
-# Background Location
-flutter_background_service: ^5.0.10
-workmanager: ^0.5.2
+### iOS
+- [ ] Update provisioning profiles
+- [ ] Configure capabilities (push, background location)
+- [ ] Test TestFlight build
+- [ ] Prepare App Store listing
+- [ ] App privacy details
 
-# Maps & Heatmap
-google_maps_flutter: ^2.10.0
-flutter_map_heatmap: ^0.0.4
-
-# Verification (TBD based on provider)
-# onfido_sdk_flutter: ^x.x.x
-```
-
----
-
-## Milestones
-
-| Phase | Target | Status |
-|-------|--------|--------|
-| Phase 1 | Foundation (Config + Firebase + Auth) | Not Started |
-| Phase 2 | Core Features (Cloud Sync + Location + Reports) | Not Started |
-| Phase 3 | Volunteer System (Registration + Verification + Matching) | Not Started |
-| Phase 4 | Reporting Pipeline (Dashboard + NGO + Heatmap) | Not Started |
+### Backend
+- [ ] Set up production Firebase project
+- [ ] Configure webhook endpoints
+- [ ] Set up monitoring/alerts
+- [ ] Database backup strategy
 
 ---
 
 ## Notes
 
-- All sensitive data must be encrypted at rest
-- GDPR/privacy compliance required for EU users (future)
-- Consider adding panic button widget for home screen
-- Audio recording feature for evidence (future)
-- Integration with wearables (future)
+- All volunteer data must be encrypted at rest
+- GDPR compliance needed for EU expansion
+- Consider panic button widget for home screen
+- Background check costs: India ₹500-800, USA $32-102
+- Annual re-verification required for volunteers
