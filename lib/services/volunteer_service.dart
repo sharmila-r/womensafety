@@ -23,13 +23,14 @@ class VolunteerService {
 
   // ==================== REGISTRATION ====================
 
-  /// Register as a volunteer
+  /// Register as a volunteer (Stage 1)
   Future<String> registerVolunteer({
     required String name,
     required String phone,
     String? email,
     String? bio,
     required String country,
+    DateTime? dateOfBirth,
   }) async {
     if (_userId == null) throw Exception('User not logged in');
 
@@ -47,6 +48,7 @@ class VolunteerService {
       email: email,
       bio: bio,
       country: country,
+      dateOfBirth: dateOfBirth,
       verificationLevel: VerificationLevel.phoneVerified,
       createdAt: DateTime.now(),
     );
@@ -138,20 +140,36 @@ class VolunteerService {
     return downloadUrl;
   }
 
-  /// Submit ID verification (after uploading docs)
-  Future<void> submitIdVerification() async {
+  /// Submit ID verification - Stage 2 (after KYC)
+  /// For India: Aadhaar + Face Match + Liveness (selfie required, no doc upload)
+  /// For USA/Others: ID document + selfie required
+  Future<void> submitIdVerification({
+    bool isAadhaarVerified = false,
+    double? faceMatchScore,
+    bool livenessPasssed = false,
+  }) async {
     final volunteer = await getCurrentVolunteer();
     if (volunteer == null) throw Exception('Not registered as volunteer');
 
-    if (volunteer.idDocumentUrl == null || volunteer.selfieUrl == null) {
-      throw Exception('Please upload ID document and selfie first');
+    // For India: only selfie needed (Aadhaar verification is done via API)
+    // For others: both ID document and selfie needed
+    final isIndia = volunteer.country == 'IN';
+
+    if (!isIndia && volunteer.idDocumentUrl == null) {
+      throw Exception('Please upload ID document first');
+    }
+    if (volunteer.selfieUrl == null) {
+      throw Exception('Please upload selfie first');
     }
 
-    // In production, this would trigger an external verification service
-    // For now, mark as pending admin review
+    // Update verification status
     await _volunteersRef.doc(volunteer.id).update({
       'verificationLevel': VerificationLevel.idVerified.name,
       'idVerifiedAt': FieldValue.serverTimestamp(),
+      'aadhaarVerified': isAadhaarVerified,
+      'faceMatchScore': faceMatchScore,
+      'livenessPasssed': livenessPasssed,
+      'kycCompletedAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }

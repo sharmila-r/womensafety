@@ -26,6 +26,13 @@ class Volunteer {
   final String? photoUrl;
   final String? bio;
   final String country;
+  final DateTime? dateOfBirth;
+
+  // KYC Stage (Stage 2)
+  final bool aadhaarVerified;
+  final double? faceMatchScore;
+  final bool livenessPasssed;
+  final DateTime? kycCompletedAt;
 
   // Verification
   final VerificationLevel verificationLevel;
@@ -33,10 +40,13 @@ class Volunteer {
   final String? selfieUrl;
   final DateTime? idVerifiedAt;
   final String? backgroundCheckId;
-  final String? backgroundCheckStatus; // pending, cleared, flagged
+  final String? backgroundCheckStatus; // pending, in_progress, completed, review_required, rejected
+  final Map<String, dynamic>? bgvChecks; // Store individual check results
   final DateTime? backgroundCheckDate;
+  final DateTime? bgvCompletedAt;
   final String? verifiedByAdminId;
   final String? vouchedByNgoName;
+  final DateTime? lastVerifiedAt; // For annual re-verification
 
   // Availability
   final AvailabilityStatus availabilityStatus;
@@ -67,18 +77,26 @@ class Volunteer {
     this.photoUrl,
     this.bio,
     required this.country,
+    this.dateOfBirth,
+    this.aadhaarVerified = false,
+    this.faceMatchScore,
+    this.livenessPasssed = false,
+    this.kycCompletedAt,
     this.verificationLevel = VerificationLevel.unverified,
     this.idDocumentUrl,
     this.selfieUrl,
     this.idVerifiedAt,
     this.backgroundCheckId,
     this.backgroundCheckStatus,
+    this.bgvChecks,
     this.backgroundCheckDate,
+    this.bgvCompletedAt,
     this.verifiedByAdminId,
     this.vouchedByNgoName,
+    this.lastVerifiedAt,
     this.availabilityStatus = AvailabilityStatus.offline,
     this.isAcceptingRequests = false,
-    this.serviceRadiusKm = 10.0,
+    this.serviceRadiusKm = 0.0, // Default to 0, set based on verification level
     this.currentLocation,
     this.availableDays = const [],
     this.availableTimeStart,
@@ -92,16 +110,36 @@ class Volunteer {
     this.lastActiveAt,
   });
 
-  /// Check if volunteer is fully verified
+  /// Check if volunteer is fully verified (Stage 3 complete)
   bool get isFullyVerified =>
       verificationLevel == VerificationLevel.backgroundChecked ||
       verificationLevel == VerificationLevel.trusted;
 
+  /// Check if volunteer has basic KYC (Stage 2 complete)
+  bool get hasBasicKyc =>
+      verificationLevel.index >= VerificationLevel.idVerified.index;
+
   /// Check if volunteer can accept escort requests
+  /// Full responders (Stage 3) can respond within 5km
+  /// Limited responders (Stage 2) can respond within 500m
   bool get canAcceptRequests =>
-      isFullyVerified &&
+      hasBasicKyc &&
       isAcceptingRequests &&
       availabilityStatus == AvailabilityStatus.available;
+
+  /// Get service radius based on verification level (in km)
+  double get effectiveServiceRadius {
+    switch (verificationLevel) {
+      case VerificationLevel.trusted:
+      case VerificationLevel.backgroundChecked:
+        return 5.0; // 5km - Full responder
+      case VerificationLevel.idVerified:
+        return 0.5; // 500m - Limited responder
+      case VerificationLevel.phoneVerified:
+      case VerificationLevel.unverified:
+        return 0.0; // Cannot respond
+    }
+  }
 
   /// Get verification badge text
   String get verificationBadge {
@@ -109,14 +147,36 @@ class Volunteer {
       case VerificationLevel.trusted:
         return 'Trusted';
       case VerificationLevel.backgroundChecked:
-        return 'Verified';
+        return 'Active';
       case VerificationLevel.idVerified:
-        return 'ID Verified';
+        return 'Verified';
       case VerificationLevel.phoneVerified:
-        return 'Phone Verified';
+        return 'Registered';
       case VerificationLevel.unverified:
         return 'Unverified';
     }
+  }
+
+  /// Get status description
+  String get statusDescription {
+    switch (verificationLevel) {
+      case VerificationLevel.trusted:
+      case VerificationLevel.backgroundChecked:
+        return 'Full responder (5km radius)';
+      case VerificationLevel.idVerified:
+        return 'Limited responder (500m radius)';
+      case VerificationLevel.phoneVerified:
+        return 'View only, cannot respond';
+      case VerificationLevel.unverified:
+        return 'Complete registration to continue';
+    }
+  }
+
+  /// Check if annual re-verification is needed
+  bool get needsReverification {
+    if (lastVerifiedAt == null) return false;
+    final oneYearAgo = DateTime.now().subtract(const Duration(days: 365));
+    return lastVerifiedAt!.isBefore(oneYearAgo);
   }
 
   factory Volunteer.fromFirestore(DocumentSnapshot doc) {
@@ -130,6 +190,11 @@ class Volunteer {
       photoUrl: data['photoUrl'],
       bio: data['bio'],
       country: data['country'] ?? 'US',
+      dateOfBirth: (data['dateOfBirth'] as Timestamp?)?.toDate(),
+      aadhaarVerified: data['aadhaarVerified'] ?? false,
+      faceMatchScore: data['faceMatchScore']?.toDouble(),
+      livenessPasssed: data['livenessPasssed'] ?? false,
+      kycCompletedAt: (data['kycCompletedAt'] as Timestamp?)?.toDate(),
       verificationLevel: VerificationLevel.values.firstWhere(
         (e) => e.name == data['verificationLevel'],
         orElse: () => VerificationLevel.unverified,
@@ -139,15 +204,18 @@ class Volunteer {
       idVerifiedAt: (data['idVerifiedAt'] as Timestamp?)?.toDate(),
       backgroundCheckId: data['backgroundCheckId'],
       backgroundCheckStatus: data['backgroundCheckStatus'],
+      bgvChecks: data['bgvChecks'] as Map<String, dynamic>?,
       backgroundCheckDate: (data['backgroundCheckDate'] as Timestamp?)?.toDate(),
+      bgvCompletedAt: (data['bgvCompletedAt'] as Timestamp?)?.toDate(),
       verifiedByAdminId: data['verifiedByAdminId'],
       vouchedByNgoName: data['vouchedByNgoName'],
+      lastVerifiedAt: (data['lastVerifiedAt'] as Timestamp?)?.toDate(),
       availabilityStatus: AvailabilityStatus.values.firstWhere(
         (e) => e.name == data['availabilityStatus'],
         orElse: () => AvailabilityStatus.offline,
       ),
       isAcceptingRequests: data['isAcceptingRequests'] ?? false,
-      serviceRadiusKm: (data['serviceRadiusKm'] ?? 10.0).toDouble(),
+      serviceRadiusKm: (data['serviceRadiusKm'] ?? 0.0).toDouble(),
       currentLocation: data['currentLocation'] as GeoPoint?,
       availableDays: List<String>.from(data['availableDays'] ?? []),
       availableTimeStart: data['availableTimeStart'],
@@ -170,15 +238,23 @@ class Volunteer {
     'photoUrl': photoUrl,
     'bio': bio,
     'country': country,
+    'dateOfBirth': dateOfBirth != null ? Timestamp.fromDate(dateOfBirth!) : null,
+    'aadhaarVerified': aadhaarVerified,
+    'faceMatchScore': faceMatchScore,
+    'livenessPasssed': livenessPasssed,
+    'kycCompletedAt': kycCompletedAt != null ? Timestamp.fromDate(kycCompletedAt!) : null,
     'verificationLevel': verificationLevel.name,
     'idDocumentUrl': idDocumentUrl,
     'selfieUrl': selfieUrl,
     'idVerifiedAt': idVerifiedAt != null ? Timestamp.fromDate(idVerifiedAt!) : null,
     'backgroundCheckId': backgroundCheckId,
     'backgroundCheckStatus': backgroundCheckStatus,
+    'bgvChecks': bgvChecks,
     'backgroundCheckDate': backgroundCheckDate != null ? Timestamp.fromDate(backgroundCheckDate!) : null,
+    'bgvCompletedAt': bgvCompletedAt != null ? Timestamp.fromDate(bgvCompletedAt!) : null,
     'verifiedByAdminId': verifiedByAdminId,
     'vouchedByNgoName': vouchedByNgoName,
+    'lastVerifiedAt': lastVerifiedAt != null ? Timestamp.fromDate(lastVerifiedAt!) : null,
     'availabilityStatus': availabilityStatus.name,
     'isAcceptingRequests': isAcceptingRequests,
     'serviceRadiusKm': serviceRadiusKm,
@@ -204,15 +280,23 @@ class Volunteer {
     String? photoUrl,
     String? bio,
     String? country,
+    DateTime? dateOfBirth,
+    bool? aadhaarVerified,
+    double? faceMatchScore,
+    bool? livenessPasssed,
+    DateTime? kycCompletedAt,
     VerificationLevel? verificationLevel,
     String? idDocumentUrl,
     String? selfieUrl,
     DateTime? idVerifiedAt,
     String? backgroundCheckId,
     String? backgroundCheckStatus,
+    Map<String, dynamic>? bgvChecks,
     DateTime? backgroundCheckDate,
+    DateTime? bgvCompletedAt,
     String? verifiedByAdminId,
     String? vouchedByNgoName,
+    DateTime? lastVerifiedAt,
     AvailabilityStatus? availabilityStatus,
     bool? isAcceptingRequests,
     double? serviceRadiusKm,
@@ -237,15 +321,23 @@ class Volunteer {
       photoUrl: photoUrl ?? this.photoUrl,
       bio: bio ?? this.bio,
       country: country ?? this.country,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      aadhaarVerified: aadhaarVerified ?? this.aadhaarVerified,
+      faceMatchScore: faceMatchScore ?? this.faceMatchScore,
+      livenessPasssed: livenessPasssed ?? this.livenessPasssed,
+      kycCompletedAt: kycCompletedAt ?? this.kycCompletedAt,
       verificationLevel: verificationLevel ?? this.verificationLevel,
       idDocumentUrl: idDocumentUrl ?? this.idDocumentUrl,
       selfieUrl: selfieUrl ?? this.selfieUrl,
       idVerifiedAt: idVerifiedAt ?? this.idVerifiedAt,
       backgroundCheckId: backgroundCheckId ?? this.backgroundCheckId,
       backgroundCheckStatus: backgroundCheckStatus ?? this.backgroundCheckStatus,
+      bgvChecks: bgvChecks ?? this.bgvChecks,
       backgroundCheckDate: backgroundCheckDate ?? this.backgroundCheckDate,
+      bgvCompletedAt: bgvCompletedAt ?? this.bgvCompletedAt,
       verifiedByAdminId: verifiedByAdminId ?? this.verifiedByAdminId,
       vouchedByNgoName: vouchedByNgoName ?? this.vouchedByNgoName,
+      lastVerifiedAt: lastVerifiedAt ?? this.lastVerifiedAt,
       availabilityStatus: availabilityStatus ?? this.availabilityStatus,
       isAcceptingRequests: isAcceptingRequests ?? this.isAcceptingRequests,
       serviceRadiusKm: serviceRadiusKm ?? this.serviceRadiusKm,

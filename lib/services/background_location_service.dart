@@ -47,10 +47,9 @@ class BackgroundLocationService {
     if (!_isInitialized) await initialize();
 
     // Check permissions first
-    final hasPermission = await LocationService.hasLocationPermission();
+    final hasPermission = await LocationService.checkPermission();
     if (!hasPermission) {
-      final granted = await LocationService.requestLocationPermission();
-      if (!granted) return false;
+      return false;
     }
 
     // Save tracking state
@@ -111,43 +110,8 @@ void onStart(ServiceInstance service) async {
   Position? lastPosition;
   Timer? locationTimer;
 
-  // Handle stop command
-  service.on('stop').listen((event) {
-    locationTimer?.cancel();
-    service.stopSelf();
-  });
-
-  // Handle interval update
-  service.on('update_interval').listen((event) {
-    if (event != null && event['seconds'] != null) {
-      intervalSeconds = event['seconds'];
-      _restartTimer();
-    }
-  });
-
-  // Handle SOS trigger
-  service.on('trigger_sos').listen((event) async {
-    final position = await _getCurrentPosition();
-    if (position != null) {
-      service.invoke('sos_triggered', {
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'timestamp': DateTime.now().toIso8601String(),
-      });
-    }
-  });
-
-  void _restartTimer() {
-    locationTimer?.cancel();
-    locationTimer = Timer.periodic(
-      Duration(seconds: intervalSeconds),
-      (timer) async {
-        await _trackLocation();
-      },
-    );
-  }
-
-  Future<Position?> _getCurrentPosition() async {
+  // Define helper functions first (before they're referenced)
+  Future<Position?> getCurrentPosition() async {
     try {
       return await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
@@ -161,8 +125,8 @@ void onStart(ServiceInstance service) async {
     }
   }
 
-  Future<void> _trackLocation() async {
-    final position = await _getCurrentPosition();
+  Future<void> trackLocation() async {
+    final position = await getCurrentPosition();
     if (position == null) return;
 
     // Calculate distance from last position
@@ -178,7 +142,7 @@ void onStart(ServiceInstance service) async {
 
     // Update notification (Android)
     if (service is AndroidServiceInstance) {
-      (service as AndroidServiceInstance).setForegroundNotificationInfo(
+      service.setForegroundNotificationInfo(
         title: 'SafeHer - Location Active',
         content: 'Last update: ${DateTime.now().toString().substring(11, 19)}',
       );
@@ -236,11 +200,47 @@ void onStart(ServiceInstance service) async {
     }
   }
 
+  void restartTimer() {
+    locationTimer?.cancel();
+    locationTimer = Timer.periodic(
+      Duration(seconds: intervalSeconds),
+      (timer) async {
+        await trackLocation();
+      },
+    );
+  }
+
+  // Handle stop command
+  service.on('stop').listen((event) {
+    locationTimer?.cancel();
+    service.stopSelf();
+  });
+
+  // Handle interval update
+  service.on('update_interval').listen((event) {
+    if (event != null && event['seconds'] != null) {
+      intervalSeconds = event['seconds'];
+      restartTimer();
+    }
+  });
+
+  // Handle SOS trigger
+  service.on('trigger_sos').listen((event) async {
+    final position = await getCurrentPosition();
+    if (position != null) {
+      service.invoke('sos_triggered', {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+    }
+  });
+
   // Start tracking immediately
-  await _trackLocation();
+  await trackLocation();
 
   // Start periodic timer
-  _restartTimer();
+  restartTimer();
 }
 
 /// Location tracking state
