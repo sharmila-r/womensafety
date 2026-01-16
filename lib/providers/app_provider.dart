@@ -15,6 +15,7 @@ import '../services/firebase_service.dart';
 import '../services/ble_button_service.dart';
 import '../services/connectivity_service.dart';
 import '../services/evidence_recording_service.dart';
+import '../services/volunteer_service.dart';
 import '../config/country_config.dart';
 
 class AppProvider extends ChangeNotifier {
@@ -42,6 +43,14 @@ class AppProvider extends ChangeNotifier {
   final EvidenceRecordingService _recordingService = EvidenceRecordingService();
   bool _isRecording = false;
 
+  // Volunteer Service
+  final VolunteerService _volunteerService = VolunteerService();
+
+  // SOS Settings
+  bool _alertNearbyVolunteers = true;
+  String? _duressCode; // Fake cancel PIN that sends silent SOS
+  String? _realCancelCode; // Real cancel PIN
+
   // Getters
   List<TrustedContact> get trustedContacts => _trustedContacts;
   List<TrustedContact> get emergencyContacts =>
@@ -67,6 +76,12 @@ class AppProvider extends ChangeNotifier {
   // Recording getters
   bool get isRecording => _isRecording;
   EvidenceRecordingService get recordingService => _recordingService;
+
+  // Volunteer and SOS settings getters
+  bool get alertNearbyVolunteers => _alertNearbyVolunteers;
+  bool get hasDuressCode => _duressCode != null && _duressCode!.isNotEmpty;
+  bool get hasRealCancelCode => _realCancelCode != null && _realCancelCode!.isNotEmpty;
+  VolunteerService get volunteerService => _volunteerService;
 
   AppProvider() {
     _loadData();
@@ -185,6 +200,9 @@ class AppProvider extends ChangeNotifier {
     // Load settings
     _stationaryAlertMinutes = prefs.getInt('stationaryAlertMinutes') ?? 30;
     _autoAlertEnabled = prefs.getBool('autoAlertEnabled') ?? false;
+    _alertNearbyVolunteers = prefs.getBool('alertNearbyVolunteers') ?? true;
+    _duressCode = prefs.getString('duressCode');
+    _realCancelCode = prefs.getString('realCancelCode');
 
     notifyListeners();
   }
@@ -247,10 +265,14 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  // SOS Feature with offline SMS fallback
-  Future<SOSResult> triggerSOS({String? customMessage, bool autoRecord = false}) async {
+  // SOS Feature with offline SMS fallback and volunteer alerts
+  Future<SOSResult> triggerSOS({
+    String? customMessage,
+    bool autoRecord = false,
+    bool silent = false, // For duress code - no UI feedback
+  }) async {
     _isSOSActive = true;
-    notifyListeners();
+    if (!silent) notifyListeners();
 
     await updateCurrentLocation();
 
@@ -275,13 +297,100 @@ class AppProvider extends ChangeNotifier {
 
       debugPrint('SOS Result: ${result.statusMessage}');
 
+      // Alert nearby volunteers if enabled
+      if (_alertNearbyVolunteers) {
+        try {
+          final volunteerResult = await _volunteerService.alertNearbyVolunteers(
+            senderName: userName,
+            senderPhone: userPhone,
+            latitude: _currentPosition!.latitude,
+            longitude: _currentPosition!.longitude,
+            address: _currentAddress,
+            message: customMessage,
+          );
+          debugPrint('Volunteer Alert: ${volunteerResult.statusMessage}');
+        } catch (e) {
+          debugPrint('Failed to alert volunteers: $e');
+        }
+      }
+
       // Auto-start audio recording if enabled
       if (autoRecord && !_isRecording) {
         await startAudioRecording();
       }
     }
 
+    // For silent SOS (duress code), don't show as active
+    if (silent) {
+      _isSOSActive = false;
+    }
+
     return result;
+  }
+
+  // ==================== DURESS CODE ====================
+
+  /// Set up duress code (fake cancel PIN that sends silent SOS)
+  Future<void> setDuressCode(String code) async {
+    _duressCode = code;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('duressCode', code);
+    notifyListeners();
+  }
+
+  /// Set up real cancel code
+  Future<void> setRealCancelCode(String code) async {
+    _realCancelCode = code;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('realCancelCode', code);
+    notifyListeners();
+  }
+
+  /// Clear duress and cancel codes
+  Future<void> clearSecurityCodes() async {
+    _duressCode = null;
+    _realCancelCode = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('duressCode');
+    await prefs.remove('realCancelCode');
+    notifyListeners();
+  }
+
+  /// Verify cancel code - returns true if real cancel, triggers silent SOS if duress
+  Future<bool> verifyCancelCode(String code) async {
+    // Check if it's the duress code (fake cancel)
+    if (_duressCode != null && code == _duressCode) {
+      // Trigger silent SOS - looks like cancel but actually sends SOS
+      await triggerSOS(
+        customMessage: 'DURESS ALERT: User entered duress code. They may be in danger and being forced to cancel.',
+        silent: true,
+        autoRecord: true, // Auto-record in duress situations
+      );
+      debugPrint('Duress code entered - silent SOS triggered');
+      return true; // Return true so it looks like a real cancel
+    }
+
+    // Check if it's the real cancel code
+    if (_realCancelCode != null && code == _realCancelCode) {
+      return true; // Real cancel
+    }
+
+    // If no codes are set, any code works (or implement other logic)
+    if (_realCancelCode == null) {
+      return true;
+    }
+
+    return false; // Wrong code
+  }
+
+  // ==================== SOS SETTINGS ====================
+
+  /// Enable/disable nearby volunteer alerts
+  Future<void> setAlertNearbyVolunteers(bool enabled) async {
+    _alertNearbyVolunteers = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('alertNearbyVolunteers', enabled);
+    notifyListeners();
   }
 
   // ==================== AUDIO/VIDEO RECORDING ====================

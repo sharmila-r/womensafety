@@ -13,6 +13,7 @@ enum VerificationLevel {
 enum AvailabilityStatus {
   available,
   busy,
+  responding, // Actively responding to SOS
   offline,
 }
 
@@ -51,6 +52,8 @@ class Volunteer {
   // Availability
   final AvailabilityStatus availabilityStatus;
   final bool isAcceptingRequests;
+  final bool sosAlertOptIn; // Opt-in to receive SOS alerts from nearby users
+  final String? currentSOSAlertId; // Currently responding to this SOS
   final double serviceRadiusKm;
   final GeoPoint? currentLocation;
   final List<String> availableDays; // ['monday', 'tuesday', ...]
@@ -96,6 +99,8 @@ class Volunteer {
     this.lastVerifiedAt,
     this.availabilityStatus = AvailabilityStatus.offline,
     this.isAcceptingRequests = false,
+    this.sosAlertOptIn = false,
+    this.currentSOSAlertId,
     this.serviceRadiusKm = 0.0, // Default to 0, set based on verification level
     this.currentLocation,
     this.availableDays = const [],
@@ -215,6 +220,8 @@ class Volunteer {
         orElse: () => AvailabilityStatus.offline,
       ),
       isAcceptingRequests: data['isAcceptingRequests'] ?? false,
+      sosAlertOptIn: data['sosAlertOptIn'] ?? false,
+      currentSOSAlertId: data['currentSOSAlertId'],
       serviceRadiusKm: (data['serviceRadiusKm'] ?? 0.0).toDouble(),
       currentLocation: data['currentLocation'] as GeoPoint?,
       availableDays: List<String>.from(data['availableDays'] ?? []),
@@ -257,6 +264,8 @@ class Volunteer {
     'lastVerifiedAt': lastVerifiedAt != null ? Timestamp.fromDate(lastVerifiedAt!) : null,
     'availabilityStatus': availabilityStatus.name,
     'isAcceptingRequests': isAcceptingRequests,
+    'sosAlertOptIn': sosAlertOptIn,
+    'currentSOSAlertId': currentSOSAlertId,
     'serviceRadiusKm': serviceRadiusKm,
     'currentLocation': currentLocation,
     'availableDays': availableDays,
@@ -299,6 +308,8 @@ class Volunteer {
     DateTime? lastVerifiedAt,
     AvailabilityStatus? availabilityStatus,
     bool? isAcceptingRequests,
+    bool? sosAlertOptIn,
+    String? currentSOSAlertId,
     double? serviceRadiusKm,
     GeoPoint? currentLocation,
     List<String>? availableDays,
@@ -340,6 +351,8 @@ class Volunteer {
       lastVerifiedAt: lastVerifiedAt ?? this.lastVerifiedAt,
       availabilityStatus: availabilityStatus ?? this.availabilityStatus,
       isAcceptingRequests: isAcceptingRequests ?? this.isAcceptingRequests,
+      sosAlertOptIn: sosAlertOptIn ?? this.sosAlertOptIn,
+      currentSOSAlertId: currentSOSAlertId ?? this.currentSOSAlertId,
       serviceRadiusKm: serviceRadiusKm ?? this.serviceRadiusKm,
       currentLocation: currentLocation ?? this.currentLocation,
       availableDays: availableDays ?? this.availableDays,
