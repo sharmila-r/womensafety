@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../services/sms_service.dart';
 import 'tracking_screen.dart';
+import 'recording_screen.dart';
+import 'fake_call_screen.dart';
+import '../services/evidence_recording_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -228,9 +231,9 @@ class _HomeScreenState extends State<HomeScreen>
 
                   const Spacer(),
 
-                  // Quick Actions
+                  // Quick Actions - Row 1
                   Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -261,6 +264,36 @@ class _HomeScreenState extends State<HomeScreen>
                       ],
                     ),
                   ),
+
+                  const SizedBox(height: 12),
+
+                  // Quick Actions - Row 2 (Recording, Fake Call)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildQuickAction(
+                          icon: provider.isRecording ? Icons.stop : Icons.mic,
+                          label: provider.isRecording ? 'Stop\nRecording' : 'Record\nAudio',
+                          onTap: () => _handleRecording(context, provider),
+                          isActive: provider.isRecording,
+                        ),
+                        _buildQuickAction(
+                          icon: Icons.videocam,
+                          label: 'Record\nVideo',
+                          onTap: () => _openVideoRecording(context),
+                        ),
+                        _buildQuickAction(
+                          icon: Icons.phone_callback,
+                          label: 'Fake\nCall',
+                          onTap: () => _showFakeCallScheduler(context),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
 
                   // Status Bar
                   Container(
@@ -455,6 +488,62 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
       ),
+    );
+  }
+
+  /// Handle audio recording toggle
+  Future<void> _handleRecording(BuildContext context, AppProvider provider) async {
+    if (provider.isRecording) {
+      final recording = await provider.stopAudioRecording();
+      if (recording != null && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Recording saved (${recording.duration?.inSeconds ?? 0}s)'),
+            backgroundColor: Colors.green,
+            action: SnackBarAction(
+              label: 'View',
+              textColor: Colors.white,
+              onPressed: () {
+                // TODO: Navigate to recordings list
+              },
+            ),
+          ),
+        );
+      }
+    } else {
+      final success = await provider.startAudioRecording();
+      if (!success && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to start recording. Check microphone permission.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Open video recording screen
+  void _openVideoRecording(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const RecordingScreen(
+          initialType: RecordingType.video,
+        ),
+      ),
+    );
+  }
+
+  /// Show fake call scheduler
+  void _showFakeCallScheduler(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => const FakeCallScheduler(),
     );
   }
 }

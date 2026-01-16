@@ -13,6 +13,8 @@ import '../services/sms_service.dart';
 import '../services/push_notification_service.dart';
 import '../services/firebase_service.dart';
 import '../services/ble_button_service.dart';
+import '../services/connectivity_service.dart';
+import '../services/evidence_recording_service.dart';
 import '../config/country_config.dart';
 
 class AppProvider extends ChangeNotifier {
@@ -33,6 +35,13 @@ class AppProvider extends ChangeNotifier {
   final BleButtonService _bleButtonService = BleButtonService();
   StreamSubscription<ButtonPressEvent>? _buttonPressSubscription;
 
+  // Connectivity Service (for offline SMS fallback)
+  final ConnectivityService _connectivityService = ConnectivityService();
+
+  // Evidence Recording Service
+  final EvidenceRecordingService _recordingService = EvidenceRecordingService();
+  bool _isRecording = false;
+
   // Getters
   List<TrustedContact> get trustedContacts => _trustedContacts;
   List<TrustedContact> get emergencyContacts =>
@@ -51,10 +60,25 @@ class AppProvider extends ChangeNotifier {
   String get detectedCountryCode => CountryConfigManager().detectedCountryCode ?? 'US';
   String get countryName => CountryConfigManager().current.countryName;
 
+  // Connectivity getters
+  bool get isOnline => _connectivityService.isOnline;
+  bool get isOffline => _connectivityService.isOffline;
+
+  // Recording getters
+  bool get isRecording => _isRecording;
+  EvidenceRecordingService get recordingService => _recordingService;
+
   AppProvider() {
     _loadData();
     _initLocation();
     _initBleButtons();
+    _initServices();
+  }
+
+  /// Initialize connectivity and recording services
+  Future<void> _initServices() async {
+    await _connectivityService.initialize();
+    await _recordingService.initialize();
   }
 
   /// Initialize BLE button service and listen for button presses
@@ -96,8 +120,7 @@ class AppProvider extends ChangeNotifier {
         break;
 
       case BleButtonAction.startRecording:
-        // TODO: Implement audio recording
-        debugPrint('Audio recording not yet implemented');
+        await toggleAudioRecording();
         break;
     }
   }
@@ -224,44 +247,92 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  // SOS Feature
-  Future<void> triggerSOS({String? customMessage}) async {
+  // SOS Feature with offline SMS fallback
+  Future<SOSResult> triggerSOS({String? customMessage, bool autoRecord = false}) async {
     _isSOSActive = true;
     notifyListeners();
 
     await updateCurrentLocation();
 
+    SOSResult result = SOSResult();
+
     if (_currentPosition != null && emergencyContacts.isNotEmpty) {
       final phones = emergencyContacts.map((c) => c.phone).toList();
+      final currentUser = FirebaseService.instance.currentUser;
+      final userName = currentUser?.displayName ?? 'Someone';
+      final userPhone = currentUser?.phoneNumber ?? '';
 
-      // Send SMS (fallback for contacts without app)
-      await SmsService.sendEmergencySMS(
-        phoneNumbers: phones,
+      // Use connectivity service for automatic offline fallback
+      result = await _connectivityService.sendSOSWithFallback(
+        senderName: userName,
+        senderPhone: userPhone,
         latitude: _currentPosition!.latitude,
         longitude: _currentPosition!.longitude,
         address: _currentAddress,
+        contactPhones: phones,
+        message: customMessage,
       );
 
-      // Send push notifications to contacts who have the app
-      try {
-        final currentUser = FirebaseService.instance.currentUser;
-        final userName = currentUser?.displayName ?? 'Someone';
-        final userPhone = currentUser?.phoneNumber ?? '';
+      debugPrint('SOS Result: ${result.statusMessage}');
 
-        await PushNotificationService().sendSOSAlertToContacts(
-          senderName: userName,
-          senderPhone: userPhone,
-          latitude: _currentPosition!.latitude,
-          longitude: _currentPosition!.longitude,
-          address: _currentAddress,
-          contactPhones: phones,
-          message: customMessage,
-        );
-      } catch (e) {
-        // Push notification failed, but SMS was already sent
-        debugPrint('Push notification failed: $e');
+      // Auto-start audio recording if enabled
+      if (autoRecord && !_isRecording) {
+        await startAudioRecording();
       }
     }
+
+    return result;
+  }
+
+  // ==================== AUDIO/VIDEO RECORDING ====================
+
+  /// Start audio recording
+  Future<bool> startAudioRecording() async {
+    final success = await _recordingService.startAudioRecording();
+    if (success) {
+      _isRecording = true;
+      notifyListeners();
+    }
+    return success;
+  }
+
+  /// Stop audio recording
+  Future<EvidenceRecording?> stopAudioRecording() async {
+    final recording = await _recordingService.stopAudioRecording();
+    _isRecording = false;
+    notifyListeners();
+    return recording;
+  }
+
+  /// Toggle audio recording
+  Future<void> toggleAudioRecording() async {
+    if (_isRecording) {
+      await stopAudioRecording();
+      await Vibration.vibrate(duration: 100, amplitude: 128);
+    } else {
+      final success = await startAudioRecording();
+      if (success) {
+        await Vibration.vibrate(duration: 300, amplitude: 255);
+      }
+    }
+  }
+
+  /// Start video recording
+  Future<bool> startVideoRecording() async {
+    final success = await _recordingService.startVideoRecording();
+    if (success) {
+      _isRecording = true;
+      notifyListeners();
+    }
+    return success;
+  }
+
+  /// Stop video recording
+  Future<EvidenceRecording?> stopVideoRecording() async {
+    final recording = await _recordingService.stopVideoRecording();
+    _isRecording = false;
+    notifyListeners();
+    return recording;
   }
 
   void deactivateSOS() {
