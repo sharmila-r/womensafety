@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../services/sms_service.dart';
 import 'tracking_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -79,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen>
                         IconButton(
                           onPressed: () {
                             // Call emergency
-                            _showEmergencyDialog(context);
+                            _showEmergencyDialog(context, provider);
                           },
                           icon: const Icon(
                             Icons.phone,
@@ -254,8 +255,8 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                         _buildQuickAction(
                           icon: Icons.call,
-                          label: 'Call\n911',
-                          onTap: () => _showEmergencyDialog(context),
+                          label: 'Call\n${provider.emergencyNumber}',
+                          onTap: () => _showEmergencyDialog(context, provider),
                         ),
                       ],
                     ),
@@ -430,12 +431,15 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  void _showEmergencyDialog(BuildContext context) {
+  void _showEmergencyDialog(BuildContext context, AppProvider provider) {
+    final emergencyNumber = provider.emergencyNumber;
+    final countryName = provider.countryName;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Emergency Call'),
-        content: const Text('Do you want to call 911?'),
+        content: Text('Call $emergencyNumber ($countryName emergency)?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -444,10 +448,10 @@ class _HomeScreenState extends State<HomeScreen>
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              // SmsService.callEmergencyNumber();
+              SmsService.callEmergencyNumber();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Call 911'),
+            child: Text('Call $emergencyNumber'),
           ),
         ],
       ),

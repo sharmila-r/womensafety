@@ -13,6 +13,7 @@ import '../services/sms_service.dart';
 import '../services/push_notification_service.dart';
 import '../services/firebase_service.dart';
 import '../services/ble_button_service.dart';
+import '../config/country_config.dart';
 
 class AppProvider extends ChangeNotifier {
   List<TrustedContact> _trustedContacts = [];
@@ -44,6 +45,11 @@ class AppProvider extends ChangeNotifier {
   bool get isSOSActive => _isSOSActive;
   int get stationaryAlertMinutes => _stationaryAlertMinutes;
   bool get autoAlertEnabled => _autoAlertEnabled;
+
+  // Country config getters (auto-detected from GPS)
+  String get emergencyNumber => CountryConfigManager().emergencyNumber;
+  String get detectedCountryCode => CountryConfigManager().detectedCountryCode ?? 'US';
+  String get countryName => CountryConfigManager().current.countryName;
 
   AppProvider() {
     _loadData();
@@ -174,6 +180,15 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> _initLocation() async {
     await updateCurrentLocation();
+
+    // Auto-detect country from GPS for correct emergency numbers
+    if (_currentPosition != null) {
+      await CountryConfigManager().detectCountryFromCoordinates(
+        _currentPosition!.latitude,
+        _currentPosition!.longitude,
+      );
+      notifyListeners();
+    }
   }
 
   Future<void> updateCurrentLocation() async {

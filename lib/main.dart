@@ -20,14 +20,19 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  await FirebaseService.instance.initialize();
+  try {
+    // Initialize Firebase
+    await FirebaseService.instance.initialize();
 
-  // Set up background message handler
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    // Set up background message handler
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // Initialize push notifications
-  await PushNotificationService().initialize();
+    // Initialize push notifications
+    await PushNotificationService().initialize();
+  } catch (e) {
+    print('Firebase initialization error: $e');
+    // Continue without Firebase for testing
+  }
 
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

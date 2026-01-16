@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' show Color;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -120,7 +121,7 @@ class PushNotificationService {
     if (androidPlugin != null) {
       // SOS Alert channel - high priority with custom sound
       await androidPlugin.createNotificationChannel(
-        const AndroidNotificationChannel(
+        AndroidNotificationChannel(
           _sosChannelId,
           _sosChannelName,
           description: _sosChannelDescription,
@@ -128,7 +129,7 @@ class PushNotificationService {
           playSound: true,
           enableVibration: true,
           enableLights: true,
-          ledColor: Color.fromARGB(255, 233, 30, 99),
+          ledColor: const Color(0xFFE91E63),
         ),
       );
 
@@ -243,7 +244,7 @@ class PushNotificationService {
       showWhen: true,
       enableVibration: true,
       enableLights: true,
-      ledColor: const Color.fromARGB(255, 233, 30, 99),
+      ledColor: const Color(0xFFE91E63),
       ledOnMs: 1000,
       ledOffMs: 500,
       fullScreenIntent: channelId == _sosChannelId, // Full screen for SOS

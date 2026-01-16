@@ -1,4 +1,5 @@
 import 'package:url_launcher/url_launcher.dart';
+import '../config/country_config.dart';
 
 class SmsService {
   static Future<void> sendSMS({
@@ -94,6 +95,7 @@ Shared at: ${DateTime.now().toString().substring(0, 19)}
   }
 
   static Future<void> callEmergencyNumber() async {
-    await makePhoneCall('911');
+    final emergencyNumber = CountryConfigManager().emergencyNumber;
+    await makePhoneCall(emergencyNumber);
   }
 }

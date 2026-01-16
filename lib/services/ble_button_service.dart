@@ -235,11 +235,11 @@ class BleButtonService {
 
       // Create button record
       final buttonType = _detectButtonType(device.platformName);
+      String buttonName = customName ??
+          (device.platformName.isNotEmpty ? device.platformName : 'SOS Button');
       final button = BleButton(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        name: customName ?? device.platformName.isNotEmpty
-            ? device.platformName
-            : 'SOS Button',
+        name: buttonName,
         macAddress: deviceId,
         type: buttonType,
         lastConnected: DateTime.now(),

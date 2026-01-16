@@ -2,6 +2,7 @@ import 'dart:io';
 import 'countries/base_country.dart';
 import 'countries/india.dart';
 import 'countries/usa.dart';
+import '../services/location_service.dart';
 
 /// Singleton class to manage country configuration
 class CountryConfigManager {
@@ -18,9 +19,15 @@ class CountryConfigManager {
   /// Currently selected country config
   BaseCountryConfig? _currentConfig;
 
+  /// Whether location-based detection has been attempted
+  bool _locationDetectionAttempted = false;
+
+  /// Detected country code from GPS
+  String? _detectedCountryCode;
+
   /// Get current country configuration
   BaseCountryConfig get current {
-    _currentConfig ??= _detectCountry();
+    _currentConfig ??= _detectCountryFromLocale();
     return _currentConfig!;
   }
 
@@ -35,16 +42,59 @@ class CountryConfigManager {
     final config = _countries[countryCode.toUpperCase()];
     if (config != null) {
       _currentConfig = config;
+      _detectedCountryCode = countryCode.toUpperCase();
     }
   }
 
-  /// Detect country based on device locale
-  BaseCountryConfig _detectCountry() {
+  /// Initialize country from GPS location (call this early in app startup)
+  Future<void> initializeFromLocation() async {
+    if (_locationDetectionAttempted) return;
+    _locationDetectionAttempted = true;
+
+    try {
+      final position = await LocationService.getCurrentLocation();
+      if (position != null) {
+        await detectCountryFromCoordinates(position.latitude, position.longitude);
+      }
+    } catch (e) {
+      print('Error detecting country from location: $e');
+      // Fall back to locale-based detection
+    }
+  }
+
+  /// Detect country from GPS coordinates using reverse geocoding
+  Future<bool> detectCountryFromCoordinates(double latitude, double longitude) async {
+    try {
+      final countryCode = await LocationService.getCountryCodeFromCoordinates(
+        latitude,
+        longitude,
+      );
+
+      if (countryCode != null && _countries.containsKey(countryCode)) {
+        _currentConfig = _countries[countryCode];
+        _detectedCountryCode = countryCode;
+        print('Country detected from GPS: $countryCode');
+        return true;
+      } else if (countryCode != null) {
+        print('Country $countryCode not supported, using default');
+      }
+    } catch (e) {
+      print('Error in reverse geocoding: $e');
+    }
+    return false;
+  }
+
+  /// Get the detected country code
+  String? get detectedCountryCode => _detectedCountryCode;
+
+  /// Detect country based on device locale (fallback)
+  BaseCountryConfig _detectCountryFromLocale() {
     try {
       final locale = Platform.localeName;
       final countryCode = locale.split('_').last.toUpperCase();
 
       if (_countries.containsKey(countryCode)) {
+        _detectedCountryCode = countryCode;
         return _countries[countryCode]!;
       }
     } catch (_) {
@@ -52,6 +102,7 @@ class CountryConfigManager {
     }
 
     // Default to USA if country not detected or not supported
+    _detectedCountryCode = 'US';
     return _countries['US']!;
   }
 
