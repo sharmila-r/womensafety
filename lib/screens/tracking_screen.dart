@@ -47,22 +47,24 @@ class _TrackingScreenState extends State<TrackingScreen> {
     // Listen to location updates
     _locationSubscription = _backgroundService.locationStream.listen((data) {
       if (data != null) {
-        final lat = data['latitude'] as double;
-        final lng = data['longitude'] as double;
-        final distance = data['distance_from_last'] as double?;
+        final lat = (data['latitude'] as num).toDouble();
+        final lng = (data['longitude'] as num).toDouble();
+        final distance = data['distance_from_last'] != null
+            ? (data['distance_from_last'] as num).toDouble()
+            : null;
 
         setState(() {
           _currentPosition = Position(
             latitude: lat,
             longitude: lng,
             timestamp: DateTime.now(),
-            accuracy: data['accuracy'] ?? 0,
-            altitude: data['altitude'] ?? 0,
-            heading: data['heading'] ?? 0,
-            speed: data['speed'] ?? 0,
-            speedAccuracy: 0,
-            altitudeAccuracy: 0,
-            headingAccuracy: 0,
+            accuracy: (data['accuracy'] as num?)?.toDouble() ?? 0.0,
+            altitude: (data['altitude'] as num?)?.toDouble() ?? 0.0,
+            heading: (data['heading'] as num?)?.toDouble() ?? 0.0,
+            speed: (data['speed'] as num?)?.toDouble() ?? 0.0,
+            speedAccuracy: 0.0,
+            altitudeAccuracy: 0.0,
+            headingAccuracy: 0.0,
           );
 
           if (distance != null) {
