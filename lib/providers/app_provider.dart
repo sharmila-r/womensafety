@@ -32,6 +32,9 @@ class AppProvider extends ChangeNotifier {
   Timer? _stationaryTimer;
   Position? _lastKnownPosition;
 
+  // Localization
+  Locale _locale = const Locale('en');
+
   // BLE Button Service
   final BleButtonService _bleButtonService = BleButtonService();
   StreamSubscription<ButtonPressEvent>? _buttonPressSubscription;
@@ -82,6 +85,10 @@ class AppProvider extends ChangeNotifier {
   bool get hasDuressCode => _duressCode != null && _duressCode!.isNotEmpty;
   bool get hasRealCancelCode => _realCancelCode != null && _realCancelCode!.isNotEmpty;
   VolunteerService get volunteerService => _volunteerService;
+
+  // Localization getters
+  Locale get locale => _locale;
+  String get languageCode => _locale.languageCode;
 
   AppProvider() {
     _loadData();
@@ -204,7 +211,30 @@ class AppProvider extends ChangeNotifier {
     _duressCode = prefs.getString('duressCode');
     _realCancelCode = prefs.getString('realCancelCode');
 
+    // Load locale
+    final savedLocale = prefs.getString('locale');
+    if (savedLocale != null) {
+      _locale = Locale(savedLocale);
+    }
+
     notifyListeners();
+  }
+
+  // ==================== LOCALIZATION ====================
+
+  /// Set the app locale (language)
+  Future<void> setLocale(Locale locale) async {
+    if (_locale == locale) return;
+
+    _locale = locale;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('locale', locale.languageCode);
+    notifyListeners();
+  }
+
+  /// Set locale by language code
+  Future<void> setLanguage(String languageCode) async {
+    await setLocale(Locale(languageCode));
   }
 
   Future<void> _saveContacts() async {

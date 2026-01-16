@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'providers/app_provider.dart';
 import 'screens/home_screen.dart';
@@ -10,6 +11,7 @@ import 'screens/report_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/firebase_service.dart';
 import 'services/push_notification_service.dart';
+import 'l10n/app_localizations.dart';
 
 /// Background message handler - must be top-level
 @pragma('vm:entry-point')
@@ -48,43 +50,56 @@ class WomenSafetyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AppProvider(),
-      child: MaterialApp(
-        title: 'SafeHer',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFFE91E63),
-            primary: const Color(0xFFE91E63),
-            secondary: const Color(0xFF9C27B0),
-            surface: Colors.white,
-            background: const Color(0xFFFCE4EC),
-          ),
-          useMaterial3: true,
-          fontFamily: 'Roboto',
-          appBarTheme: const AppBarTheme(
-            centerTitle: true,
-            elevation: 0,
-            backgroundColor: Color(0xFFE91E63),
-            foregroundColor: Colors.white,
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE91E63),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+      child: Consumer<AppProvider>(
+        builder: (context, provider, _) {
+          return MaterialApp(
+            title: 'SafeHer',
+            debugShowCheckedModeBanner: false,
+            // Localization
+            locale: provider.locale,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: const Color(0xFFE91E63),
+                primary: const Color(0xFFE91E63),
+                secondary: const Color(0xFF9C27B0),
+                surface: Colors.white,
+                background: const Color(0xFFFCE4EC),
+              ),
+              useMaterial3: true,
+              fontFamily: 'Roboto',
+              appBarTheme: const AppBarTheme(
+                centerTitle: true,
+                elevation: 0,
+                backgroundColor: Color(0xFFE91E63),
+                foregroundColor: Colors.white,
+              ),
+              elevatedButtonTheme: ElevatedButtonThemeData(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE91E63),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+              ),
+              cardTheme: CardThemeData(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
-          ),
-          cardTheme: CardThemeData(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-        ),
-        home: const MainNavigationScreen(),
+            home: const MainNavigationScreen(),
+          );
+        },
       ),
     );
   }

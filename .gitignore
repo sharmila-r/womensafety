@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# API Keys and Secrets
+**/ios/Runner/Secrets.xcconfig
+**/android/app/secrets.properties
+.env
+*.env.local

@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_provider.dart';
 import '../config/country_config.dart';
 import '../config/countries/base_country.dart';
+import '../l10n/app_localizations.dart';
 import 'ble_button_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -57,6 +58,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   subtitle: Text(currentCountry.countryName),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _showCountryPicker(context),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Language Section
+              Text(
+                AppLocalizations.of(context).language,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFE91E63),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              Card(
+                child: ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE91E63).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.language,
+                      color: Color(0xFFE91E63),
+                    ),
+                  ),
+                  title: Text(AppLocalizations.of(context).language),
+                  subtitle: Text(
+                    provider.languageCode == 'ta'
+                        ? AppLocalizations.of(context).tamil
+                        : AppLocalizations.of(context).english,
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showLanguagePicker(context, provider),
                 ),
               ),
 
@@ -571,6 +609,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Icon(icon, color: color),
+    );
+  }
+
+  void _showLanguagePicker(BuildContext context, AppProvider provider) {
+    final l10n = AppLocalizations.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                l10n.language,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            ListTile(
+              leading: const Text('🇺🇸', style: TextStyle(fontSize: 24)),
+              title: Text(l10n.english),
+              subtitle: const Text('English'),
+              trailing: provider.languageCode == 'en'
+                  ? const Icon(Icons.check, color: Color(0xFFE91E63))
+                  : null,
+              onTap: () {
+                provider.setLanguage('en');
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Text('🇮🇳', style: TextStyle(fontSize: 24)),
+              title: Text(l10n.tamil),
+              subtitle: const Text('தமிழ்'),
+              trailing: provider.languageCode == 'ta'
+                  ? const Icon(Icons.check, color: Color(0xFFE91E63))
+                  : null,
+              onTap: () {
+                provider.setLanguage('ta');
+                Navigator.pop(context);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
     );
   }
 
