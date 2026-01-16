@@ -83,6 +83,20 @@
 	<key>NSFaceIDUsageDescription</key>
 	<string>SafeHer can use Face ID to securely unlock the app and protect your privacy.</string>
 
+	<!-- Push Notifications -->
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>SafeHer needs notification access to alert you about SOS emergencies from your trusted contacts.</string>
+
+	<!-- Bluetooth for SOS Buttons -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>SafeHer uses Bluetooth to connect with your SOS panic button, allowing you to trigger emergency alerts discreetly.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>SafeHer uses Bluetooth to connect with your SOS panic button for emergency alerts.</string>
+
+	<!-- Firebase Messaging -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+
 	<!-- Google Maps API Key -->
 	<key>GMSApiKey</key>
 	<string>YOUR_GOOGLE_MAPS_API_KEY</string>

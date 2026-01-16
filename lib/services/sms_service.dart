@@ -49,10 +49,28 @@ Please respond immediately or contact emergency services!
     required double latitude,
     required double longitude,
     required String address,
+    bool isCheckIn = false,
   }) async {
     final String mapsUrl =
         'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude';
-    final String message = '''
+
+    final String message;
+    if (isCheckIn) {
+      message = '''
+✅ Check-In: I'm Safe
+
+I'm checking in to let you know I'm okay.
+
+📍 Current Location:
+$address
+
+🗺️ Google Maps:
+$mapsUrl
+
+⏰ Time: ${DateTime.now().toString().substring(0, 19)}
+''';
+    } else {
+      message = '''
 📍 Live Location Shared
 
 I'm sharing my current location with you.
@@ -63,6 +81,7 @@ Google Maps: $mapsUrl
 
 Shared at: ${DateTime.now().toString().substring(0, 19)}
 ''';
+    }
 
     await sendSMS(phoneNumbers: phoneNumbers, message: message);
   }

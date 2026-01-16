@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_provider.dart';
 import '../config/country_config.dart';
 import '../config/countries/base_country.dart';
+import 'ble_button_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -121,6 +122,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _showTimePickerDialog(context, provider),
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // BLE SOS Button
+              Card(
+                child: ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE91E63).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.touch_app,
+                      color: Color(0xFFE91E63),
+                    ),
+                  ),
+                  title: const Text('SOS Panic Button'),
+                  subtitle: const Text(
+                    'Connect a wearable Bluetooth button',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BleButtonScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
 

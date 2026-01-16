@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary app color (Pink) -->
+    <color name="primary">#E91E63</color>
+
+    <!-- Notification color -->
+    <color name="notification_color">#E91E63</color>
+</resources>

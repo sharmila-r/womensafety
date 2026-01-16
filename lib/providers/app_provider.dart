@@ -3,11 +3,16 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vibration/vibration.dart';
 import '../models/trusted_contact.dart';
 import '../models/harassment_report.dart';
 import '../models/escort_request.dart';
+import '../models/ble_button.dart';
 import '../services/location_service.dart';
 import '../services/sms_service.dart';
+import '../services/push_notification_service.dart';
+import '../services/firebase_service.dart';
+import '../services/ble_button_service.dart';
 
 class AppProvider extends ChangeNotifier {
   List<TrustedContact> _trustedContacts = [];
@@ -22,6 +27,10 @@ class AppProvider extends ChangeNotifier {
   StreamSubscription<Position>? _locationSubscription;
   Timer? _stationaryTimer;
   Position? _lastKnownPosition;
+
+  // BLE Button Service
+  final BleButtonService _bleButtonService = BleButtonService();
+  StreamSubscription<ButtonPressEvent>? _buttonPressSubscription;
 
   // Getters
   List<TrustedContact> get trustedContacts => _trustedContacts;
@@ -39,6 +48,91 @@ class AppProvider extends ChangeNotifier {
   AppProvider() {
     _loadData();
     _initLocation();
+    _initBleButtons();
+  }
+
+  /// Initialize BLE button service and listen for button presses
+  Future<void> _initBleButtons() async {
+    await _bleButtonService.initialize();
+
+    // Listen for button presses
+    _buttonPressSubscription = _bleButtonService.buttonPresses.listen(
+      _handleButtonPress,
+    );
+  }
+
+  /// Handle button press events from BLE buttons
+  Future<void> _handleButtonPress(ButtonPressEvent event) async {
+    debugPrint('BLE Button pressed: ${event.button.name} - ${event.pressType.name} - ${event.action.name}');
+
+    // Vibrate to confirm button press received
+    await Vibration.vibrate(duration: 200, amplitude: 255);
+
+    switch (event.action) {
+      case BleButtonAction.none:
+        // Do nothing
+        break;
+
+      case BleButtonAction.checkIn:
+        await _sendCheckIn();
+        break;
+
+      case BleButtonAction.shareLocation:
+        await shareCurrentLocation();
+        break;
+
+      case BleButtonAction.triggerSOS:
+        await triggerSOS(customMessage: 'SOS triggered via panic button');
+        break;
+
+      case BleButtonAction.callEmergency:
+        await SmsService.callEmergencyNumber();
+        break;
+
+      case BleButtonAction.startRecording:
+        // TODO: Implement audio recording
+        debugPrint('Audio recording not yet implemented');
+        break;
+    }
+  }
+
+  /// Send a check-in message to contacts
+  Future<void> _sendCheckIn() async {
+    await updateCurrentLocation();
+
+    if (_trustedContacts.isEmpty) {
+      debugPrint('No contacts to send check-in to');
+      return;
+    }
+
+    final phones = _trustedContacts.map((c) => c.phone).toList();
+
+    // Send SMS check-in
+    await SmsService.shareLocation(
+      phoneNumbers: phones,
+      latitude: _currentPosition?.latitude ?? 0,
+      longitude: _currentPosition?.longitude ?? 0,
+      address: _currentAddress,
+      isCheckIn: true,
+    );
+
+    // Also send push notification
+    try {
+      final currentUser = FirebaseService.instance.currentUser;
+      final userName = currentUser?.displayName ?? 'Someone';
+
+      await PushNotificationService().sendSOSAlertToContacts(
+        senderName: userName,
+        senderPhone: currentUser?.phoneNumber ?? '',
+        latitude: _currentPosition?.latitude ?? 0,
+        longitude: _currentPosition?.longitude ?? 0,
+        address: _currentAddress,
+        contactPhones: phones,
+        message: '$userName checked in: I\'m safe at $_currentAddress',
+      );
+    } catch (e) {
+      debugPrint('Failed to send check-in notification: $e');
+    }
   }
 
   Future<void> _loadData() async {
@@ -116,7 +210,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   // SOS Feature
-  Future<void> triggerSOS() async {
+  Future<void> triggerSOS({String? customMessage}) async {
     _isSOSActive = true;
     notifyListeners();
 
@@ -124,12 +218,34 @@ class AppProvider extends ChangeNotifier {
 
     if (_currentPosition != null && emergencyContacts.isNotEmpty) {
       final phones = emergencyContacts.map((c) => c.phone).toList();
+
+      // Send SMS (fallback for contacts without app)
       await SmsService.sendEmergencySMS(
         phoneNumbers: phones,
         latitude: _currentPosition!.latitude,
         longitude: _currentPosition!.longitude,
         address: _currentAddress,
       );
+
+      // Send push notifications to contacts who have the app
+      try {
+        final currentUser = FirebaseService.instance.currentUser;
+        final userName = currentUser?.displayName ?? 'Someone';
+        final userPhone = currentUser?.phoneNumber ?? '';
+
+        await PushNotificationService().sendSOSAlertToContacts(
+          senderName: userName,
+          senderPhone: userPhone,
+          latitude: _currentPosition!.latitude,
+          longitude: _currentPosition!.longitude,
+          address: _currentAddress,
+          contactPhones: phones,
+          message: customMessage,
+        );
+      } catch (e) {
+        // Push notification failed, but SMS was already sent
+        debugPrint('Push notification failed: $e');
+      }
     }
   }
 
@@ -242,6 +358,7 @@ class AppProvider extends ChangeNotifier {
   void dispose() {
     _locationSubscription?.cancel();
     _stationaryTimer?.cancel();
+    _buttonPressSubscription?.cancel();
     super.dispose();
   }
 }

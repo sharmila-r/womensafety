@@ -31,6 +31,10 @@ dependencies:
   firebase_auth: ^5.3.4
   cloud_firestore: ^5.6.0
   firebase_storage: ^12.4.0
+  firebase_messaging: ^15.1.6
+
+  # Local Notifications
+  flutter_local_notifications: ^18.0.1
 
   # Permissions
   permission_handler: ^11.3.1
@@ -52,6 +56,9 @@ dependencies:
 
   # Vibration for SOS
   vibration: ^2.0.0
+
+  # Bluetooth Low Energy for SOS buttons
+  flutter_blue_plus: ^1.35.2
 
 dev_dependencies:
   flutter_test:

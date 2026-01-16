@@ -84,7 +84,7 @@
 ### Escort Matching
 - [x] Volunteer proximity calculation
 - [x] Availability checking
-- [ ] ⏳ Push notification for requests
+- [x] Push notification for requests
 - [ ] ⏳ Real-time escort tracking map
 - [x] Post-escort rating system
 
@@ -128,10 +128,11 @@
 
 ### High Priority ⏳
 
-#### Push Notifications
-- [ ] Firebase Cloud Messaging setup
-- [ ] SOS alert notifications to contacts
-- [ ] Escort request notifications to volunteers
+#### Push Notifications ✅
+- [x] Firebase Cloud Messaging setup
+- [x] SOS alert notifications to contacts
+- [x] Escort request notifications to volunteers
+- [x] Cloud Functions for notification delivery
 - [ ] Alert notifications to NGOs
 - [ ] Report status update notifications
 
@@ -167,9 +168,9 @@
 ### Low Priority / Future 🔮
 
 #### Wearable Integration
+- [x] Generic BLE panic button support (Flic, iTag, etc.)
 - [ ] Apple Watch app
 - [ ] Wear OS app
-- [ ] Panic button on wearables
 
 #### Audio Recording
 - [ ] Background audio recording for evidence
@@ -232,8 +233,8 @@ GOOGLE_MAPS_API_KEY=
 ### Firebase Console Tasks
 - [ ] Enable Phone Authentication
 - [ ] Create Firestore indexes for queries
-- [ ] Set up Cloud Functions for webhooks
-- [ ] Configure FCM for push notifications
+- [x] Set up Cloud Functions for webhooks
+- [x] Configure FCM for push notifications
 
 ---
 
