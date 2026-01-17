@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Location Permissions -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -20,8 +21,11 @@
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.SEND_SMS" />
 
-    <!-- Camera for Report Photos -->
+    <!-- Camera for Report Photos & KYC -->
     <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Microphone for Liveness Check & Recording -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- Internet -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -37,7 +41,7 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <application
-        android:label="SafeHer"
+        android:label="Kaavala"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
@@ -65,23 +69,25 @@
         <service
             android:name="id.flutter.flutter_background_service.BackgroundService"
             android:foregroundServiceType="location"
-            android:exported="false" />
+            android:exported="false"
+            tools:replace="android:exported" />
 
         <!-- Boot Receiver for Auto-Start -->
         <receiver
             android:name="id.flutter.flutter_background_service.BootReceiver"
             android:enabled="true"
-            android:exported="false">
+            android:exported="false"
+            tools:replace="android:exported">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
 
-        <!-- Google Maps API Key (replace with your key) -->
+        <!-- Google Maps API Key (loaded from secrets.properties) -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_GOOGLE_MAPS_API_KEY"/>
+            android:value="${GOOGLE_MAPS_API_KEY}"/>
 
         <!-- Firebase Cloud Messaging -->
         <meta-data

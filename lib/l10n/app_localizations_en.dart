@@ -1,7 +1,7 @@
 /// English translations for the Women Safety app
 const Map<String, String> englishTranslations = {
   // ==================== APP GENERAL ====================
-  'appName': 'SafeHer',
+  'appName': 'Kaavala',
   'appTagline': 'Your Safety, Our Priority',
   'loading': 'Loading...',
   'error': 'Error',

@@ -4,6 +4,8 @@ import '../../models/volunteer.dart';
 import '../../models/escort_request.dart';
 import '../../services/volunteer_service.dart';
 import '../../services/location_service.dart';
+import '../../services/remote_config_service.dart';
+import 'volunteer_registration_screen.dart';
 
 class VolunteerDashboardScreen extends StatefulWidget {
   const VolunteerDashboardScreen({super.key});
@@ -272,6 +274,13 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
   Widget _buildVerificationCard() {
     if (_volunteer!.isFullyVerified) return const SizedBox.shrink();
 
+    final skipBgv = RemoteConfigService.instance.bgvSkipApiCalls;
+
+    // If BGV is skipped and volunteer is ID verified, no need to show verification card
+    if (skipBgv && _volunteer!.verificationLevel == VerificationLevel.idVerified) {
+      return const SizedBox.shrink();
+    }
+
     String message;
     String action;
     Color color;
@@ -312,7 +321,13 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
             ),
             TextButton(
               onPressed: () {
-                // Navigate to verification screen
+                // Navigate to registration screen to continue verification
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const VolunteerRegistrationScreen(),
+                  ),
+                ).then((_) => _loadData()); // Refresh after returning
               },
               child: Text(action),
             ),
@@ -389,7 +404,30 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
   }
 
   Widget _buildOnlineToggle() {
-    final canGoOnline = _volunteer!.isFullyVerified;
+    final config = RemoteConfigService.instance;
+    final bgvRequired = config.bgvRequiredForOnline;
+
+    // Get radius from config based on verification level and country
+    final countryCode = _volunteer!.country ?? 'IN';
+    final radius = _volunteer!.isFullyVerified
+        ? config.getBgvVerifiedRadius(countryCode)
+        : config.getIdVerifiedRadius(countryCode);
+    final unit = countryCode.toUpperCase() == 'US' ? 'miles' : 'km';
+
+    // bgv_required_for_online=false: ID-verified volunteers can go online
+    // bgv_required_for_online=true: Only BGV-verified volunteers can go online
+    final canGoOnline = bgvRequired
+        ? _volunteer!.isFullyVerified
+        : _volunteer!.hasBasicKyc;
+
+    String statusText;
+    if (canGoOnline) {
+      statusText = 'Toggle to accept escort requests (${radius.toInt()} $unit radius)';
+    } else {
+      statusText = bgvRequired
+          ? 'Complete background verification to go online'
+          : 'Complete ID verification to go online';
+    }
 
     return Card(
       child: Padding(
@@ -410,11 +448,9 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
                         ),
                       ),
                       Text(
-                        canGoOnline
-                            ? 'Toggle to accept escort requests'
-                            : 'Complete verification to go online',
+                        statusText,
                         style: TextStyle(
-                          color: Colors.grey[600],
+                          color: canGoOnline ? Colors.grey[600] : Colors.orange,
                           fontSize: 12,
                         ),
                       ),
@@ -436,7 +472,7 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
                   TextButton.icon(
                     onPressed: () => _showRadiusDialog(),
                     icon: const Icon(Icons.tune),
-                    label: Text('${_volunteer!.serviceRadiusKm.toInt()} km'),
+                    label: Text('${radius.toInt()} $unit'),
                   ),
                   TextButton.icon(
                     onPressed: () {},

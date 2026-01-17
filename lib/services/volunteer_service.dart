@@ -143,25 +143,31 @@ class VolunteerService {
   }
 
   /// Submit ID verification - Stage 2 (after KYC)
+  /// For Didit: All verification handled by Didit, just store session ID
   /// For India: Aadhaar + Face Match + Liveness (selfie required, no doc upload)
   /// For USA/Others: ID document + selfie required
   Future<void> submitIdVerification({
     bool isAadhaarVerified = false,
     double? faceMatchScore,
     bool livenessPasssed = false,
+    String? diditSessionId,
   }) async {
     final volunteer = await getCurrentVolunteer();
     if (volunteer == null) throw Exception('Not registered as volunteer');
 
-    // For India: only selfie needed (Aadhaar verification is done via API)
-    // For others: both ID document and selfie needed
-    final isIndia = volunteer.country == 'IN';
+    // If using Didit, skip document checks (Didit handles everything)
+    if (diditSessionId == null) {
+      // Manual verification flow
+      // For India: only selfie needed (Aadhaar verification is done via API)
+      // For others: both ID document and selfie needed
+      final isIndia = volunteer.country == 'IN';
 
-    if (!isIndia && volunteer.idDocumentUrl == null) {
-      throw Exception('Please upload ID document first');
-    }
-    if (volunteer.selfieUrl == null) {
-      throw Exception('Please upload selfie first');
+      if (!isIndia && volunteer.idDocumentUrl == null) {
+        throw Exception('Please upload ID document first');
+      }
+      if (volunteer.selfieUrl == null) {
+        throw Exception('Please upload selfie first');
+      }
     }
 
     // Update verification status
@@ -173,6 +179,8 @@ class VolunteerService {
       'livenessPasssed': livenessPasssed,
       'kycCompletedAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
+      if (diditSessionId != null) 'diditSessionId': diditSessionId,
+      if (diditSessionId != null) 'kycProvider': 'didit',
     });
   }
 

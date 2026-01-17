@@ -38,11 +38,21 @@ class FirebaseService {
     if (_initialized) return;
 
     try {
-      await Firebase.initializeApp();
+      print('🔥 Starting Firebase initialization...');
+      final app = await Firebase.initializeApp();
+      print('🔥 Firebase app initialized: ${app.name}');
+      print('🔥 Firebase options:');
+      print('   - Project ID: ${app.options.projectId}');
+      print('   - App ID: ${app.options.appId}');
+      print('   - API Key: ${app.options.apiKey.substring(0, 10)}...');
+
       _auth = FirebaseAuth.instance;
       _firestore = FirebaseFirestore.instance;
       _storage = FirebaseStorage.instance;
       _initialized = true;
+
+      print('🔥 FirebaseAuth instance: $_auth');
+      print('🔥 Current user: ${_auth?.currentUser?.uid ?? "none"}');
 
       // Enable offline persistence for Firestore
       _firestore!.settings = const Settings(
@@ -50,9 +60,10 @@ class FirebaseService {
         cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
       );
 
-      print('Firebase initialized successfully');
-    } catch (e) {
-      print('Firebase initialization failed: $e');
+      print('✅ Firebase initialized successfully');
+    } catch (e, stackTrace) {
+      print('❌ Firebase initialization failed: $e');
+      print('❌ Stack trace: $stackTrace');
       // App can still work with local storage if Firebase fails
       _initialized = false;
     }

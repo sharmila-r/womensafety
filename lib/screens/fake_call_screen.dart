@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/fake_call_service.dart';
+import '../main.dart' show navigatorKey;
 
 /// Fake incoming call screen that mimics a real phone call
 class FakeCallScreen extends StatefulWidget {
@@ -306,9 +307,10 @@ class _FakeCallSchedulerState extends State<FakeCallScheduler> {
     _service.scheduleFakeCall(delaySeconds: _selectedDelay);
 
     // Set up callback to show fake call screen
+    // Using global navigatorKey to handle navigation after widget disposal
     _service.onCallStart = (config) {
-      Navigator.push(
-        context,
+      // Use global navigator key - works even after this widget is disposed
+      navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => FakeCallScreen(config: config),
         ),

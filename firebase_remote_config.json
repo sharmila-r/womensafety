@@ -1,0 +1,126 @@
+{
+  "parameters": {
+    "didit_api_key": {
+      "defaultValue": {
+        "value": "M4xcqEfC9exAz-HD1-iaYAD2qppiYab3h9cGih3Papg"
+      },
+      "description": "Didit API Key for identity verification"
+    },
+    "didit_app_id": {
+      "defaultValue": {
+        "value": "bed6438f-6656-46ac-8db8-282fe3c476ca"
+      },
+      "description": "Didit Application ID"
+    },
+    "didit_kyc_workflow_id": {
+      "defaultValue": {
+        "value": "38ed873c-68b8-42d7-901c-a2e601ebbf67"
+      },
+      "description": "Didit KYC Workflow ID (ID Verification + Liveness + Face Match)"
+    },
+    "didit_liveness_workflow_id": {
+      "defaultValue": {
+        "value": "38ed873c-68b8-42d7-901c-a2e601ebbf67"
+      },
+      "description": "Didit Liveness-only Workflow ID"
+    },
+    "gridlines_api_key": {
+      "defaultValue": {
+        "value": ""
+      },
+      "description": "Gridlines API Key for Voter ID verification (India)"
+    },
+    "surepass_api_key": {
+      "defaultValue": {
+        "value": ""
+      },
+      "description": "Surepass API Key for Voter ID verification (backup)"
+    },
+    "kyc_provider": {
+      "defaultValue": {
+        "value": "didit"
+      },
+      "description": "Which KYC provider to use: didit, idfy, gridlines, manual"
+    },
+    "enable_bgv": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "valueType": "BOOLEAN",
+      "description": "Enable background verification step"
+    },
+    "enable_volunteer_registration": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "valueType": "BOOLEAN",
+      "description": "Enable volunteer registration feature"
+    },
+    "min_face_match_score": {
+      "defaultValue": {
+        "value": "0.7"
+      },
+      "valueType": "NUMBER",
+      "description": "Minimum face match score to pass verification (0.0 - 1.0)"
+    },
+    "bgv_required_for_online": {
+      "defaultValue": {
+        "value": "false"
+      },
+      "valueType": "BOOLEAN",
+      "description": "Whether BGV is required to go online (false = ID verified can go online, true = BGV required)"
+    },
+    "bgv_skip_api_calls": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "valueType": "BOOLEAN",
+      "description": "Skip real BGV API calls and return mock success (for testing)"
+    },
+    "volunteer_radius_id_verified_in": {
+      "defaultValue": {
+        "value": "5.0"
+      },
+      "valueType": "NUMBER",
+      "description": "Service radius (km) for ID-verified volunteers in India"
+    },
+    "volunteer_radius_id_verified_us": {
+      "defaultValue": {
+        "value": "5.0"
+      },
+      "valueType": "NUMBER",
+      "description": "Service radius (miles) for ID-verified volunteers in USA"
+    },
+    "volunteer_radius_id_verified_default": {
+      "defaultValue": {
+        "value": "5.0"
+      },
+      "valueType": "NUMBER",
+      "description": "Default service radius (km) for ID-verified volunteers"
+    },
+    "volunteer_radius_bgv_verified_in": {
+      "defaultValue": {
+        "value": "10.0"
+      },
+      "valueType": "NUMBER",
+      "description": "Service radius (km) for BGV-verified volunteers in India"
+    },
+    "volunteer_radius_bgv_verified_us": {
+      "defaultValue": {
+        "value": "10.0"
+      },
+      "valueType": "NUMBER",
+      "description": "Service radius (miles) for BGV-verified volunteers in USA"
+    },
+    "volunteer_radius_bgv_verified_default": {
+      "defaultValue": {
+        "value": "10.0"
+      },
+      "valueType": "NUMBER",
+      "description": "Default service radius (km) for BGV-verified volunteers"
+    }
+  },
+  "version": {
+    "versionNumber": "3"
+  }
+}

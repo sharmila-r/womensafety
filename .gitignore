@@ -47,5 +47,8 @@ app.*.map.json
 # API Keys and Secrets
 **/ios/Runner/Secrets.xcconfig
 **/android/app/secrets.properties
+**/android/key.properties
+**/android/app/upload-keystore.jks
 .env
 *.env.local
+lib/config/dev_keys.dart

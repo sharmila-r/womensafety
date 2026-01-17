@@ -11,6 +11,7 @@ import 'screens/report_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/firebase_service.dart';
 import 'services/push_notification_service.dart';
+import 'services/remote_config_service.dart';
 import 'l10n/app_localizations.dart';
 
 /// Background message handler - must be top-level
@@ -31,6 +32,9 @@ void main() async {
 
     // Initialize push notifications
     await PushNotificationService().initialize();
+
+    // Initialize Remote Config (for API keys and feature flags)
+    await RemoteConfigService.instance.initialize();
   } catch (e) {
     print('Firebase initialization error: $e');
     // Continue without Firebase for testing
@@ -43,6 +47,9 @@ void main() async {
   runApp(const WomenSafetyApp());
 }
 
+/// Global navigator key for navigation from anywhere (e.g., callbacks, services)
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 class WomenSafetyApp extends StatelessWidget {
   const WomenSafetyApp({super.key});
 
@@ -53,7 +60,8 @@ class WomenSafetyApp extends StatelessWidget {
       child: Consumer<AppProvider>(
         builder: (context, provider, _) {
           return MaterialApp(
-            title: 'SafeHer',
+            navigatorKey: navigatorKey,
+            title: 'Kaavala',
             debugShowCheckedModeBanner: false,
             // Localization
             locale: provider.locale,

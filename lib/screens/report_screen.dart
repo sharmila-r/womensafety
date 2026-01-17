@@ -87,17 +87,19 @@ class _ReportScreenState extends State<ReportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Report Harassment'),
-      ),
-      body: Consumer<AppProvider>(
-        builder: (context, provider, child) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Report Harassment'),
+        ),
+        body: Consumer<AppProvider>(
+          builder: (context, provider, child) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 // Info Card
                 Card(
                   color: Colors.orange.withOpacity(0.1),
@@ -310,10 +312,11 @@ class _ReportScreenState extends State<ReportScreen> {
                   const SizedBox(height: 16),
                   ...provider.reports.map((report) => _buildReportCard(report)),
                 ],
-              ],
-            ),
-          );
-        },
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -396,7 +399,14 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   void _submitReport(BuildContext context, AppProvider provider) {
+    // Dismiss keyboard first
+    FocusScope.of(context).unfocus();
+
+    debugPrint('Submit report button pressed');
+
     if (_formKey.currentState!.validate()) {
+      debugPrint('Form validated, creating report...');
+
       final report = HarassmentReport(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         harassmentType: _selectedType,
@@ -408,7 +418,11 @@ class _ReportScreenState extends State<ReportScreen> {
         reportedAt: DateTime.now(),
       );
 
+      debugPrint('Report created: ${report.id}, type: ${report.harassmentType}');
+
       provider.addReport(report);
+
+      debugPrint('Report added to provider. Total reports: ${provider.reports.length}');
 
       // Clear form
       _descriptionController.clear();
@@ -421,8 +435,13 @@ class _ReportScreenState extends State<ReportScreen> {
         const SnackBar(
           content: Text('Report submitted successfully!'),
           backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
         ),
       );
+
+      debugPrint('SnackBar shown');
+    } else {
+      debugPrint('Form validation failed');
     }
   }
 }

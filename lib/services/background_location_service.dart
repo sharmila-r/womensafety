@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'location_service.dart';
@@ -13,14 +15,45 @@ class BackgroundLocationService {
   factory BackgroundLocationService() => _instance;
   BackgroundLocationService._internal();
 
-  final FlutterBackgroundService _service = FlutterBackgroundService();
+  FlutterBackgroundService? _service;
   bool _isInitialized = false;
+
+  static const String _channelId = 'kaavala_location';
+  static const String _channelName = 'Location Tracking';
+  static const String _channelDescription = 'Tracks your location for safety features';
+
+  /// Create notification channel (must be called before starting service)
+  Future<void> _createNotificationChannel() async {
+    if (!Platform.isAndroid) return;
+
+    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    final androidPlugin = flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+
+    if (androidPlugin != null) {
+      await androidPlugin.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _channelId,
+          _channelName,
+          description: _channelDescription,
+          importance: Importance.low, // Low to avoid sound/vibration
+          showBadge: false,
+        ),
+      );
+      debugPrint('Location notification channel created');
+    }
+  }
 
   /// Initialize the background service
   Future<void> initialize() async {
     if (_isInitialized) return;
 
-    await _service.configure(
+    // Create notification channel FIRST (required for Android 8+)
+    await _createNotificationChannel();
+
+    _service = FlutterBackgroundService();
+
+    await _service!.configure(
       iosConfiguration: IosConfiguration(
         autoStart: false,
         onForeground: onStart,
@@ -31,8 +64,8 @@ class BackgroundLocationService {
         isForegroundMode: true,
         autoStart: false,
         autoStartOnBoot: false,
-        notificationChannelId: 'safeher_location',
-        initialNotificationTitle: 'SafeHer',
+        notificationChannelId: _channelId,
+        initialNotificationTitle: 'Kaavala',
         initialNotificationContent: 'Location tracking active',
         foregroundServiceNotificationId: 888,
         foregroundServiceTypes: [AndroidForegroundType.location],
@@ -45,6 +78,7 @@ class BackgroundLocationService {
   /// Start background location tracking
   Future<bool> startTracking() async {
     if (!_isInitialized) await initialize();
+    if (_service == null) return false;
 
     // Check permissions first
     final hasPermission = await LocationService.checkPermission();
@@ -56,7 +90,7 @@ class BackgroundLocationService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('background_tracking_enabled', true);
 
-    return await _service.startService();
+    return await _service!.startService();
   }
 
   /// Stop background location tracking
@@ -64,29 +98,31 @@ class BackgroundLocationService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('background_tracking_enabled', false);
 
-    _service.invoke('stop');
+    _service?.invoke('stop');
   }
 
   /// Check if tracking is running
   Future<bool> isTracking() async {
-    return await _service.isRunning();
+    if (_service == null) return false;
+    return await _service!.isRunning();
   }
 
   /// Get latest location from service
   Stream<Map<String, dynamic>?> get locationStream {
-    return _service.on('location_update');
+    if (_service == null) return const Stream.empty();
+    return _service!.on('location_update');
   }
 
   /// Send SOS from background
   void triggerBackgroundSOS() {
-    _service.invoke('trigger_sos');
+    _service?.invoke('trigger_sos');
   }
 
   /// Update tracking interval
   Future<void> setTrackingInterval(int seconds) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('tracking_interval', seconds);
-    _service.invoke('update_interval', {'seconds': seconds});
+    _service?.invoke('update_interval', {'seconds': seconds});
   }
 }
 
@@ -143,7 +179,7 @@ void onStart(ServiceInstance service) async {
     // Update notification (Android)
     if (service is AndroidServiceInstance) {
       service.setForegroundNotificationInfo(
-        title: 'SafeHer - Location Active',
+        title: 'Kaavala - Location Active',
         content: 'Last update: ${DateTime.now().toString().substring(11, 19)}',
       );
     }

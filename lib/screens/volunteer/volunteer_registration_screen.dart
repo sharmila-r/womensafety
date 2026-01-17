@@ -1,10 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../models/volunteer.dart';
 import '../../services/volunteer_service.dart';
 import '../../services/bgv_service.dart';
+import '../../services/didit_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/remote_config_service.dart';
 import '../../config/country_config.dart';
 import 'volunteer_dashboard_screen.dart';
+import 'didit_verification_screen.dart';
+import '../auth/phone_login_screen.dart';
 
 class VolunteerRegistrationScreen extends StatefulWidget {
   const VolunteerRegistrationScreen({super.key});
@@ -21,6 +27,7 @@ class _VolunteerRegistrationScreenState
   final _volunteerService = VolunteerService();
   final _bgvService = BGVService();
   final _countryManager = CountryConfigManager();
+  final _authService = AuthService();
 
   // Step 1: Basic Info
   final _nameController = TextEditingController();
@@ -48,11 +55,66 @@ class _VolunteerRegistrationScreenState
   String? _volunteerId;
   bool _consentGiven = false;
 
+  // Didit verification
+  bool _diditVerificationComplete = false;
+  DiditVerificationResult? _diditResult;
+
   File? _idDocument;
   File? _selfie;
   final ImagePicker _picker = ImagePicker();
 
   bool get _isIndia => _countryManager.current.countryCode == 'IN';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExistingVolunteer();
+  }
+
+  Future<void> _loadExistingVolunteer() async {
+    setState(() => _isLoading = true);
+    try {
+      final volunteer = await _volunteerService.getCurrentVolunteer();
+      if (volunteer != null && mounted) {
+        setState(() {
+          _volunteerId = volunteer.id;
+          _nameController.text = volunteer.name;
+          _phoneController.text = volunteer.phone.replaceAll(RegExp(r'^\+\d+'), '');
+          _emailController.text = volunteer.email ?? '';
+          _bioController.text = volunteer.bio ?? '';
+          _dateOfBirth = volunteer.dateOfBirth;
+
+          // Determine which step to show based on verification level
+          switch (volunteer.verificationLevel) {
+            case VerificationLevel.unverified:
+            case VerificationLevel.phoneVerified:
+              _currentStep = 1; // Go to KYC step
+              break;
+            case VerificationLevel.idVerified:
+              _currentStep = 2; // Go to BGV step
+              _diditVerificationComplete = true;
+              break;
+            case VerificationLevel.backgroundChecked:
+            case VerificationLevel.trusted:
+              // Fully verified, go to dashboard
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const VolunteerDashboardScreen(),
+                ),
+              );
+              return;
+          }
+        });
+      }
+    } catch (e) {
+      // Not a volunteer yet, start from step 0
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -331,85 +393,136 @@ class _VolunteerRegistrationScreenState
   }
 
   Step _buildKycStep() {
+    final useDidit = DiditService.isConfigured;
+
     return Step(
-      title: Text(_isIndia ? 'Aadhaar KYC' : 'ID Verification'),
-      subtitle: Text(_isIndia ? 'Instant verification' : 'Upload government ID'),
+      title: const Text('Identity Verification'),
+      subtitle: Text(useDidit ? 'Powered by Didit' : 'Upload government ID'),
       isActive: _currentStep >= 1,
       state: _currentStep > 1 ? StepState.complete : StepState.indexed,
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Cost indicator
-          _buildCostChip(
-            _isIndia ? '₹50-100' : '\$5-15',
-            'Instant',
-          ),
+          _buildCostChip('Free', 'Instant'),
           const SizedBox(height: 16),
 
-          if (_isIndia) ...[
-            // India: Aadhaar-based verification
+          if (useDidit) ...[
+            // Didit verification flow
             const Text(
-              'We\'ll verify your identity using Aadhaar and face match.',
+              'Verify your identity with a quick ID scan and selfie.',
               style: TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 16),
 
-            TextFormField(
-              controller: _aadhaarController,
-              keyboardType: TextInputType.number,
-              maxLength: 12,
-              decoration: const InputDecoration(
-                labelText: 'Aadhaar Number *',
-                prefixIcon: Icon(Icons.credit_card),
-                border: OutlineInputBorder(),
-                counterText: '',
-                hintText: '12 digit Aadhaar number',
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Face match requirements
+            // What gets verified
             _buildCheckList([
-              'Aadhaar Verification',
-              'Face Match with Aadhaar photo',
-              'Liveness Check (blink detection)',
+              'Government ID Verification',
+              'Liveness Detection',
+              'Face Match',
             ]),
+            const SizedBox(height: 20),
+
+            // Verification status card
+            if (_diditVerificationComplete && _diditResult != null) ...[
+              _buildVerificationStatusCard(),
+            ] else ...[
+              // Start verification button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _startDiditVerification,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE91E63),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.verified_user),
+                  label: const Text(
+                    'Start Identity Verification',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'You\'ll be redirected to complete verification. This takes about 2 minutes.',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ] else ...[
-            // USA: Document upload
-            const Text(
-              'Please upload a clear photo of your government-issued ID.',
-              style: TextStyle(color: Colors.grey),
-            ),
+            // Fallback: Manual verification flow
+            if (_isIndia) ...[
+              const Text(
+                'We\'ll verify your identity using Aadhaar and face match.',
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _aadhaarController,
+                keyboardType: TextInputType.number,
+                maxLength: 12,
+                decoration: const InputDecoration(
+                  labelText: 'Aadhaar Number *',
+                  prefixIcon: Icon(Icons.credit_card),
+                  border: OutlineInputBorder(),
+                  counterText: '',
+                  hintText: '12 digit Aadhaar number',
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              _buildCheckList([
+                'Aadhaar Verification',
+                'Face Match with Aadhaar photo',
+                'Liveness Check (blink detection)',
+              ]),
+            ] else ...[
+              const Text(
+                'Please upload a clear photo of your government-issued ID.',
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+
+              _buildUploadCard(
+                title: 'Government ID',
+                subtitle: 'Driver\'s License or Passport',
+                icon: Icons.badge,
+                file: _idDocument,
+                onTap: () => _pickImage(true),
+              ),
+            ],
+
             const SizedBox(height: 16),
 
             _buildUploadCard(
-              title: 'Government ID',
-              subtitle: 'Driver\'s License or Passport',
-              icon: Icons.badge,
-              file: _idDocument,
-              onTap: () => _pickImage(true),
+              title: 'Selfie',
+              subtitle: _isIndia
+                  ? 'For face match verification'
+                  : 'Clear photo of your face',
+              icon: Icons.face,
+              file: _selfie,
+              onTap: () => _pickImage(false),
             ),
           ],
 
           const SizedBox(height: 16),
-
-          // Selfie upload (both countries)
-          _buildUploadCard(
-            title: 'Selfie',
-            subtitle: _isIndia
-                ? 'For face match verification'
-                : 'Clear photo of your face',
-            icon: Icons.face,
-            file: _selfie,
-            onTap: () => _pickImage(false),
-          ),
-
-          const SizedBox(height: 16),
-          _buildInfoCard(
-            icon: Icons.verified_user,
-            color: Colors.amber,
-            title: 'After verification',
-            description: 'You\'ll be VERIFIED with limited responder access (500m radius). Complete BGV for full access.',
+          Builder(
+            builder: (context) {
+              final config = RemoteConfigService.instance;
+              final idRadius = config.getIdVerifiedRadius(_countryManager.current.countryCode);
+              return _buildInfoCard(
+                icon: Icons.verified_user,
+                color: Colors.amber,
+                title: 'After verification',
+                description: 'You\'ll be VERIFIED with full responder access (${idRadius.toInt()}km radius). Complete BGV for trusted badge.',
+              );
+            },
           ),
 
           const SizedBox(height: 16),
@@ -417,6 +530,105 @@ class _VolunteerRegistrationScreenState
         ],
       ),
     );
+  }
+
+  Widget _buildVerificationStatusCard() {
+    final success = _diditResult?.success ?? false;
+
+    return Card(
+      color: success ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(
+              success ? Icons.check_circle : Icons.error,
+              color: success ? Colors.green : Colors.red,
+              size: 40,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    success ? 'Verification Complete' : 'Verification Failed',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: success ? Colors.green : Colors.red,
+                    ),
+                  ),
+                  if (success && _diditResult?.extractedName != null) ...[
+                    const SizedBox(height: 4),
+                    Text('Name: ${_diditResult!.extractedName}'),
+                  ],
+                  if (success && _diditResult?.livenessPasssed == true) ...[
+                    const SizedBox(height: 2),
+                    const Text('✓ Liveness verified', style: TextStyle(color: Colors.green)),
+                  ],
+                  if (!success) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      _diditResult?.errorMessage ?? 'Please try again',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _startDiditVerification,
+                      child: const Text('Retry Verification'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _startDiditVerification() async {
+    if (_volunteerId == null) {
+      _showError('Please complete the previous step first');
+      return;
+    }
+
+    final result = await Navigator.push<DiditVerificationResult>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DiditVerificationScreen(
+          oderlId: _volunteerId!,
+          userEmail: _emailController.text.isEmpty ? null : _emailController.text,
+          userPhone: _phoneController.text,
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      print('=== DIDIT VERIFICATION RESULT ===');
+      print('Success: ${result.success}');
+      print('Cancelled: ${result.cancelled}');
+      print('Decision: ${result.decision}');
+      print('Error: ${result.errorMessage}');
+      print('Session ID: ${result.sessionId}');
+
+      setState(() {
+        _diditResult = result;
+        _diditVerificationComplete = result.success;
+      });
+
+      if (result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Identity verification successful!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else if (!result.cancelled) {
+        _showError(result.errorMessage ?? 'Verification failed. Please try again.');
+      }
+    }
   }
 
   Step _buildBgvStep() {
@@ -634,10 +846,95 @@ class _VolunteerRegistrationScreenState
               'Background check is processed by ${_isIndia ? "IDfy" : "Checkr"} and typically takes 2-5 business days.',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
+
+            const SizedBox(height: 16),
+            // Skip option
+            Builder(
+              builder: (context) {
+                final config = RemoteConfigService.instance;
+                final idRadius = config.getIdVerifiedRadius(_countryManager.current.countryCode);
+                return Card(
+                  color: Colors.grey.withOpacity(0.1),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.skip_next, color: Colors.grey),
+                            SizedBox(width: 8),
+                            Text(
+                              'Want to start helping now?',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'You can skip BGV for now and help within ${idRadius.toInt()}km radius. Complete BGV later for trusted badge.',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _skipBgvAndGoToDashboard,
+                            icon: const Icon(Icons.arrow_forward),
+                            label: const Text('Skip for Now'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.grey[700],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _skipBgvAndGoToDashboard() async {
+    final config = RemoteConfigService.instance;
+    final idRadius = config.getIdVerifiedRadius(_countryManager.current.countryCode);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Skip Background Verification?'),
+        content: Text(
+          'You can start helping users within ${idRadius.toInt()}km radius now.\n\n'
+          'Complete background verification later to get the trusted badge.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE91E63),
+            ),
+            child: const Text('Skip & Continue'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const VolunteerDashboardScreen(),
+        ),
+      );
+    }
   }
 
   Widget _buildCostChip(String cost, String time) {
@@ -926,6 +1223,26 @@ class _VolunteerRegistrationScreenState
           return;
         }
 
+        // Check if user is logged in, if not prompt for phone verification
+        if (!_authService.isLoggedIn) {
+          final phoneNumber = '${_countryManager.phoneCode}${_phoneController.text.trim()}';
+          final loginSuccess = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PhoneLoginScreen(
+                initialPhone: phoneNumber,
+                title: 'Verify Your Phone',
+                subtitle: 'Please verify your phone number to continue registration',
+              ),
+            ),
+          );
+
+          if (loginSuccess != true) {
+            // User cancelled or login failed
+            return;
+          }
+        }
+
         setState(() => _isLoading = true);
         try {
           _volunteerId = await _volunteerService.registerVolunteer(
@@ -946,68 +1263,130 @@ class _VolunteerRegistrationScreenState
 
       case 1:
         // Validate KYC
-        if (_isIndia) {
-          if (_aadhaarController.text.length != 12) {
-            _showError('Please enter a valid 12-digit Aadhaar number');
+        final useDidit = DiditService.isConfigured;
+
+        if (useDidit) {
+          // Didit verification flow
+          if (!_diditVerificationComplete || _diditResult == null) {
+            _showError('Please complete identity verification first');
             return;
           }
-        } else {
-          if (_idDocument == null) {
-            _showError('Please upload your government ID');
+
+          if (!_diditResult!.success) {
+            _showError('Identity verification failed. Please try again.');
             return;
           }
-        }
 
-        if (_selfie == null) {
-          _showError('Please upload a selfie for verification');
-          return;
-        }
-
-        setState(() => _isLoading = true);
-        try {
-          // Upload documents
-          if (!_isIndia && _idDocument != null) {
-            await _volunteerService.uploadIdDocument(_idDocument!);
-          }
-          await _volunteerService.uploadSelfie(_selfie!);
-
-          // Perform KYC verification
-          double? faceMatchScore;
-          bool livenessPasssed = false;
-          bool aadhaarVerified = false;
-
-          if (_isIndia) {
-            // IDfy Basic KYC
-            final result = await _bgvService.idfyBasicKyc(
-              volunteerId: _volunteerId!,
-              aadhaarNumber: _aadhaarController.text,
-              selfieBase64: '', // Would convert selfie to base64
-              name: _nameController.text,
-              dateOfBirth: '${_dateOfBirth!.day}/${_dateOfBirth!.month}/${_dateOfBirth!.year}',
+          setState(() => _isLoading = true);
+          try {
+            // Update volunteer with Didit verification results
+            await _volunteerService.submitIdVerification(
+              isAadhaarVerified: false, // Not using Aadhaar with Didit
+              faceMatchScore: _diditResult!.faceMatchScore,
+              livenessPasssed: _diditResult!.livenessPasssed,
+              diditSessionId: _diditResult!.sessionId,
             );
 
-            if (!result.passed) {
-              _showError(result.errorMessage ?? 'KYC verification failed');
-              setState(() => _isLoading = false);
+            // Check if BGV step should be skipped
+            final skipBgv = RemoteConfigService.instance.bgvSkipApiCalls;
+            if (skipBgv) {
+              // Skip BGV, go directly to dashboard
+              if (mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const VolunteerDashboardScreen(),
+                  ),
+                );
+              }
+            } else {
+              setState(() => _currentStep = 2);
+            }
+          } catch (e) {
+            _showError(e.toString());
+          } finally {
+            setState(() => _isLoading = false);
+          }
+        } else {
+          // Manual verification flow (fallback)
+          if (_isIndia) {
+            if (_aadhaarController.text.length != 12) {
+              _showError('Please enter a valid 12-digit Aadhaar number');
               return;
             }
-
-            // Extract KYC results
-            aadhaarVerified = result.details['aadhaar']?['status'] == 'id_found';
-            faceMatchScore = result.details['face_match_score']?.toDouble();
-            livenessPasssed = result.details['is_live'] ?? false;
+          } else {
+            if (_idDocument == null) {
+              _showError('Please upload your government ID');
+              return;
+            }
           }
 
-          await _volunteerService.submitIdVerification(
-            isAadhaarVerified: aadhaarVerified,
-            faceMatchScore: faceMatchScore,
-            livenessPasssed: livenessPasssed,
-          );
-          setState(() => _currentStep = 2);
-        } catch (e) {
-          _showError(e.toString());
-        } finally {
-          setState(() => _isLoading = false);
+          if (_selfie == null) {
+            _showError('Please upload a selfie for verification');
+            return;
+          }
+
+          setState(() => _isLoading = true);
+          try {
+            // Upload documents
+            if (!_isIndia && _idDocument != null) {
+              await _volunteerService.uploadIdDocument(_idDocument!);
+            }
+            await _volunteerService.uploadSelfie(_selfie!);
+
+            // Perform KYC verification
+            double? faceMatchScore;
+            bool livenessPasssed = false;
+            bool aadhaarVerified = false;
+
+            if (_isIndia) {
+              // IDfy Basic KYC
+              final result = await _bgvService.idfyBasicKyc(
+                volunteerId: _volunteerId!,
+                aadhaarNumber: _aadhaarController.text,
+                selfieBase64: '', // Would convert selfie to base64
+                name: _nameController.text,
+                dateOfBirth: '${_dateOfBirth!.day}/${_dateOfBirth!.month}/${_dateOfBirth!.year}',
+              );
+
+              if (!result.passed) {
+                _showError(result.errorMessage ?? 'KYC verification failed');
+                setState(() => _isLoading = false);
+                return;
+              }
+
+              // Extract KYC results
+              aadhaarVerified = result.details['aadhaar']?['status'] == 'id_found';
+              faceMatchScore = result.details['face_match_score']?.toDouble();
+              livenessPasssed = result.details['is_live'] ?? false;
+            }
+
+            await _volunteerService.submitIdVerification(
+              isAadhaarVerified: aadhaarVerified,
+              faceMatchScore: faceMatchScore,
+              livenessPasssed: livenessPasssed,
+            );
+
+            // Check if BGV step should be skipped
+            final skipBgv = RemoteConfigService.instance.bgvSkipApiCalls;
+            if (skipBgv) {
+              // Skip BGV, go directly to dashboard
+              if (mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const VolunteerDashboardScreen(),
+                  ),
+                );
+              }
+            } else {
+              setState(() => _currentStep = 2);
+            }
+          } catch (e) {
+            _showError(e.toString());
+          } finally {
+            setState(() => _isLoading = false);
+          }
         }
         break;
 

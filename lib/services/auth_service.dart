@@ -29,36 +29,60 @@ class AuthService {
     required Function(String error) onError,
     required Function(PhoneAuthCredential credential) onAutoVerify,
   }) async {
+    print('📱 AuthService.sendOTP called');
+    print('📱 Phone number: $phoneNumber');
+    print('📱 Current user: ${_firebase.auth.currentUser?.uid ?? "none"}');
+    print('📱 Firebase app: ${_firebase.auth.app.name}');
+
     try {
+      print('📱 Calling verifyPhoneNumber...');
       await _firebase.auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         timeout: const Duration(seconds: 60),
         verificationCompleted: (PhoneAuthCredential credential) async {
-          // Auto-verification (Android only)
+          print('✅ Auto-verification completed');
           onAutoVerify(credential);
         },
         verificationFailed: (FirebaseAuthException e) {
-          String message = 'Verification failed';
+          print('❌ Verification FAILED');
+          print('❌ Error code: ${e.code}');
+          print('❌ Error message: ${e.message}');
+          print('❌ Error details: ${e.toString()}');
+          print('❌ Plugin: ${e.plugin}');
+
+          String message = 'Verification failed: ${e.code}';
           if (e.code == 'invalid-phone-number') {
             message = 'Invalid phone number format';
           } else if (e.code == 'too-many-requests') {
             message = 'Too many requests. Please try again later';
           } else if (e.code == 'quota-exceeded') {
             message = 'SMS quota exceeded. Please try again tomorrow';
+          } else if (e.code == 'app-not-authorized') {
+            message = 'App not authorized. Check Firebase Console SHA-1 fingerprint';
+          } else if (e.code == 'missing-client-identifier') {
+            message = 'Missing client identifier. Check google-services.json';
+          } else if (e.message != null) {
+            message = e.message!;
           }
           onError(message);
         },
         codeSent: (String verificationId, int? resendToken) {
+          print('✅ Code SENT successfully');
+          print('✅ Verification ID: $verificationId');
           _verificationId = verificationId;
           _resendToken = resendToken;
           onCodeSent(verificationId);
         },
         codeAutoRetrievalTimeout: (String verificationId) {
+          print('⏰ Auto-retrieval timeout');
           _verificationId = verificationId;
         },
         forceResendingToken: _resendToken,
       );
-    } catch (e) {
+      print('📱 verifyPhoneNumber call completed');
+    } catch (e, stackTrace) {
+      print('💥 Exception in sendOTP: $e');
+      print('💥 Stack trace: $stackTrace');
       onError('Failed to send OTP: $e');
     }
   }

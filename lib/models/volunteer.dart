@@ -137,9 +137,8 @@ class Volunteer {
     switch (verificationLevel) {
       case VerificationLevel.trusted:
       case VerificationLevel.backgroundChecked:
-        return 5.0; // 5km - Full responder
       case VerificationLevel.idVerified:
-        return 0.5; // 500m - Limited responder
+        return 5.0; // 5km - All verified volunteers
       case VerificationLevel.phoneVerified:
       case VerificationLevel.unverified:
         return 0.0; // Cannot respond

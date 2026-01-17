@@ -186,7 +186,7 @@ class PushNotificationService {
     // Show local notification
     await _showLocalNotification(
       id: message.hashCode,
-      title: notification?.title ?? data['title'] ?? 'SafeHer Alert',
+      title: notification?.title ?? data['title'] ?? 'Kaavala Alert',
       body: notification?.body ?? data['body'] ?? '',
       channelId: channelId,
       payload: jsonEncode(data),

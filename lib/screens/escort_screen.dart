@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../models/escort_request.dart';
+import '../services/escort_request_service.dart';
+import 'chat_screen.dart';
 
 class EscortScreen extends StatefulWidget {
   const EscortScreen({super.key});
@@ -15,8 +17,11 @@ class _EscortScreenState extends State<EscortScreen> {
   final _eventNameController = TextEditingController();
   final _locationController = TextEditingController();
   final _notesController = TextEditingController();
+  final _escortService = EscortRequestService();
+
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -30,7 +35,9 @@ class _EscortScreenState extends State<EscortScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Volunteer Escort'),
+        title: const Text('Request Escort'),
+        backgroundColor: const Color(0xFFE91E63),
+        foregroundColor: Colors.white,
       ),
       body: Consumer<AppProvider>(
         builder: (context, provider, child) {
@@ -41,7 +48,7 @@ class _EscortScreenState extends State<EscortScreen> {
               children: [
                 // Info Card
                 Card(
-                  color: const Color(0xFFE91E63).withOpacity(0.1),
+                  color: const Color(0xFFE91E63).withValues(alpha: 0.1),
                   child: const Padding(
                     padding: EdgeInsets.all(16),
                     child: Row(
@@ -53,7 +60,7 @@ class _EscortScreenState extends State<EscortScreen> {
                         SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Request a volunteer escort for events, rallies, or when walking alone at night.',
+                            'Request a verified volunteer to escort you. Nearby volunteers will be notified.',
                             style: TextStyle(fontSize: 14),
                           ),
                         ),
@@ -65,7 +72,7 @@ class _EscortScreenState extends State<EscortScreen> {
 
                 // Request Form
                 const Text(
-                  'Request Escort',
+                  'New Request',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -80,10 +87,10 @@ class _EscortScreenState extends State<EscortScreen> {
                       TextFormField(
                         controller: _eventNameController,
                         decoration: const InputDecoration(
-                          labelText: 'Event Name',
+                          labelText: 'Event / Purpose',
                           prefixIcon: Icon(Icons.event),
                           border: OutlineInputBorder(),
-                          hintText: 'e.g., Women\'s March, Night Walk',
+                          hintText: 'e.g., Night walk, Office commute',
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -96,10 +103,10 @@ class _EscortScreenState extends State<EscortScreen> {
                       TextFormField(
                         controller: _locationController,
                         decoration: InputDecoration(
-                          labelText: 'Location',
+                          labelText: 'Pickup Location',
                           prefixIcon: const Icon(Icons.location_on),
                           border: const OutlineInputBorder(),
-                          hintText: 'Enter event location',
+                          hintText: 'Enter pickup location',
                           suffixIcon: IconButton(
                             icon: const Icon(Icons.my_location),
                             onPressed: () {
@@ -150,7 +157,7 @@ class _EscortScreenState extends State<EscortScreen> {
                         controller: _notesController,
                         maxLines: 3,
                         decoration: const InputDecoration(
-                          labelText: 'Additional Notes',
+                          labelText: 'Additional Notes (optional)',
                           prefixIcon: Icon(Icons.notes),
                           border: OutlineInputBorder(),
                           hintText: 'Any special requirements...',
@@ -161,10 +168,25 @@ class _EscortScreenState extends State<EscortScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: () => _submitRequest(context, provider),
-                          icon: const Icon(Icons.send),
-                          label: const Text('Submit Request'),
+                          onPressed: _isSubmitting
+                              ? null
+                              : () => _submitRequest(context, provider),
+                          icon: _isSubmitting
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.send),
+                          label: Text(_isSubmitting
+                              ? 'Submitting...'
+                              : 'Request Escort'),
                           style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE91E63),
+                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
                         ),
@@ -175,18 +197,58 @@ class _EscortScreenState extends State<EscortScreen> {
 
                 const SizedBox(height: 32),
 
-                // Previous Requests
-                if (provider.escortRequests.isNotEmpty) ...[
-                  const Text(
-                    'Your Requests',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                // Your Requests
+                const Text(
+                  'Your Requests',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(height: 16),
-                  ...provider.escortRequests.map((request) => _buildRequestCard(request)),
-                ],
+                ),
+                const SizedBox(height: 16),
+
+                StreamBuilder<List<EscortRequest>>(
+                  stream: _escortService.getUserRequests(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    }
+
+                    final requests = snapshot.data ?? [];
+
+                    if (requests.isEmpty) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.directions_walk,
+                                size: 48,
+                                color: Colors.grey,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No requests yet',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      children: requests
+                          .map((request) => _buildRequestCard(request))
+                          .toList(),
+                    );
+                  },
+                ),
               ],
             ),
           );
@@ -198,19 +260,33 @@ class _EscortScreenState extends State<EscortScreen> {
   Widget _buildRequestCard(EscortRequest request) {
     Color statusColor;
     IconData statusIcon;
+    String statusText;
 
     switch (request.status) {
-      case 'confirmed':
+      case EscortRequestStatus.confirmed:
         statusColor = Colors.green;
         statusIcon = Icons.check_circle;
+        statusText = 'CONFIRMED';
         break;
-      case 'pending':
+      case EscortRequestStatus.inProgress:
+        statusColor = Colors.blue;
+        statusIcon = Icons.directions_walk;
+        statusText = 'IN PROGRESS';
+        break;
+      case EscortRequestStatus.completed:
+        statusColor = Colors.grey;
+        statusIcon = Icons.done_all;
+        statusText = 'COMPLETED';
+        break;
+      case EscortRequestStatus.cancelled:
+        statusColor = Colors.red;
+        statusIcon = Icons.cancel;
+        statusText = 'CANCELLED';
+        break;
+      case EscortRequestStatus.pending:
         statusColor = Colors.orange;
         statusIcon = Icons.pending;
-        break;
-      default:
-        statusColor = Colors.grey;
-        statusIcon = Icons.help_outline;
+        statusText = 'PENDING';
     }
 
     return Card(
@@ -238,7 +314,7 @@ class _EscortScreenState extends State<EscortScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -247,7 +323,7 @@ class _EscortScreenState extends State<EscortScreen> {
                       Icon(statusIcon, size: 16, color: statusColor),
                       const SizedBox(width: 4),
                       Text(
-                        request.status.toUpperCase(),
+                        statusText,
                         style: TextStyle(
                           color: statusColor,
                           fontSize: 12,
@@ -283,18 +359,87 @@ class _EscortScreenState extends State<EscortScreen> {
                 ),
               ],
             ),
+
+            // Volunteer info if assigned
             if (request.assignedVolunteerName != null) ...[
               const Divider(),
               Row(
                 children: [
                   const Icon(Icons.person, size: 16, color: Colors.green),
                   const SizedBox(width: 4),
-                  Text(
-                    'Volunteer: ${request.assignedVolunteerName}',
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Text(
+                      'Volunteer: ${request.assignedVolunteerName}',
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
+                  ),
+                  // Chat button
+                  if (request.chatId != null)
+                    IconButton(
+                      icon: const Icon(Icons.chat, color: Color(0xFFE91E63)),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatScreen(
+                              chatId: request.chatId!,
+                              otherUserName: request.assignedVolunteerName!,
+                            ),
+                          ),
+                        );
+                      },
+                      tooltip: 'Chat with volunteer',
+                    ),
+                ],
+              ),
+            ],
+
+            // Action buttons
+            if (request.isPending) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _cancelRequest(request),
+                  icon: const Icon(Icons.close, color: Colors.red),
+                  label: const Text(
+                    'Cancel Request',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              ),
+            ],
+
+            // Rate button for completed escorts
+            if (request.isCompleted && request.rating == null) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _showRatingDialog(request),
+                  icon: const Icon(Icons.star),
+                  label: const Text('Rate Your Experience'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber,
+                    foregroundColor: Colors.black,
+                  ),
+                ),
+              ),
+            ],
+
+            // Show rating if given
+            if (request.rating != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.star, size: 16, color: Colors.amber),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Rated: ${request.rating!.toStringAsFixed(1)}/5',
+                    style: const TextStyle(color: Colors.grey),
                   ),
                 ],
               ),
@@ -327,8 +472,12 @@ class _EscortScreenState extends State<EscortScreen> {
     }
   }
 
-  void _submitRequest(BuildContext context, AppProvider provider) {
-    if (_formKey.currentState!.validate()) {
+  Future<void> _submitRequest(BuildContext context, AppProvider provider) async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
       final eventDateTime = DateTime(
         _selectedDate.year,
         _selectedDate.month,
@@ -337,18 +486,14 @@ class _EscortScreenState extends State<EscortScreen> {
         _selectedTime.minute,
       );
 
-      final request = EscortRequest(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+      await _escortService.createRequest(
         eventName: _eventNameController.text,
         eventLocation: _locationController.text,
         latitude: provider.currentPosition?.latitude ?? 0,
         longitude: provider.currentPosition?.longitude ?? 0,
         eventDateTime: eventDateTime,
         notes: _notesController.text.isEmpty ? null : _notesController.text,
-        createdAt: DateTime.now(),
       );
-
-      provider.addEscortRequest(request);
 
       // Clear form
       _eventNameController.clear();
@@ -359,12 +504,145 @@ class _EscortScreenState extends State<EscortScreen> {
         _selectedTime = TimeOfDay.now();
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Escort request submitted successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Request submitted! Nearby volunteers notified.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
+  }
+
+  Future<void> _cancelRequest(EscortRequest request) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Request?'),
+        content: const Text('Are you sure you want to cancel this request?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('No'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Cancel Request'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _escortService.cancelRequest(request.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Request cancelled')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _showRatingDialog(EscortRequest request) async {
+    double rating = 5;
+    final reviewController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Rate Your Experience'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('How was your escort with ${request.assignedVolunteerName}?'),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  return IconButton(
+                    icon: Icon(
+                      index < rating ? Icons.star : Icons.star_border,
+                      color: Colors.amber,
+                      size: 36,
+                    ),
+                    onPressed: () {
+                      setDialogState(() => rating = index + 1.0);
+                    },
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reviewController,
+                decoration: const InputDecoration(
+                  labelText: 'Review (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  await _escortService.rateEscort(
+                    requestId: request.id,
+                    rating: rating,
+                    review: reviewController.text.isEmpty
+                        ? null
+                        : reviewController.text,
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Thank you for your feedback!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Submit'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

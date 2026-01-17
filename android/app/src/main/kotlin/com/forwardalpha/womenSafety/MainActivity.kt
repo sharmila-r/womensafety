@@ -1,4 +1,4 @@
-package com.forwardalpha.women_safety
+package com.forwardalpha.womenSafety
 
 import io.flutter.embedding.android.FlutterActivity
 

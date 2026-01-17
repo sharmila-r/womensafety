@@ -2,9 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../services/sms_service.dart';
+import '../services/auth_service.dart';
+import '../services/volunteer_service.dart';
+import '../services/chat_service.dart';
+import '../models/volunteer.dart';
 import 'tracking_screen.dart';
 import 'recording_screen.dart';
+import 'recordings_screen.dart';
 import 'fake_call_screen.dart';
+import 'escort_tracking_screen.dart';
+import 'chat_list_screen.dart';
+import 'volunteer/volunteer_dashboard_screen.dart';
 import '../services/evidence_recording_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -19,6 +27,14 @@ class _HomeScreenState extends State<HomeScreen>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
+  final AuthService _authService = AuthService();
+  final VolunteerService _volunteerService = VolunteerService();
+  final ChatService _chatService = ChatService();
+
+  Volunteer? _volunteer;
+  bool _isCheckingVolunteer = true;
+  int _unreadMessages = 0;
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +46,33 @@ class _HomeScreenState extends State<HomeScreen>
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    _checkVolunteerStatus();
+    _listenToUnreadMessages();
+  }
+
+  void _listenToUnreadMessages() {
+    _chatService.getTotalUnreadCount().listen((count) {
+      if (mounted) {
+        setState(() => _unreadMessages = count);
+      }
+    });
+  }
+
+  Future<void> _checkVolunteerStatus() async {
+    try {
+      final volunteer = await _volunteerService.getCurrentVolunteer();
+      if (mounted) {
+        setState(() {
+          _volunteer = volunteer;
+          _isCheckingVolunteer = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isCheckingVolunteer = false);
+      }
+    }
   }
 
   @override
@@ -60,40 +103,174 @@ class _HomeScreenState extends State<HomeScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'SafeHer',
+                            const Text(
+                              'Kaavala',
                               style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
                             ),
-                            Text(
+                            const Text(
                               'Your Safety, Our Priority',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.white70,
                               ),
                             ),
+                            // Debug: Show phone number
+                            if (_authService.currentUser?.phoneNumber != null)
+                              Text(
+                                _authService.currentUser!.phoneNumber!,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white60,
+                                ),
+                              ),
                           ],
                         ),
-                        IconButton(
-                          onPressed: () {
-                            // Call emergency
-                            _showEmergencyDialog(context, provider);
-                          },
-                          icon: const Icon(
-                            Icons.phone,
-                            color: Colors.white,
-                            size: 28,
-                          ),
+                        Row(
+                          children: [
+                            // Messages Button
+                            Stack(
+                              children: [
+                                IconButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const ChatListScreen(),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(
+                                    Icons.chat_bubble_outline,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                  tooltip: 'Messages',
+                                ),
+                                if (_unreadMessages > 0)
+                                  Positioned(
+                                    right: 4,
+                                    top: 4,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 18,
+                                        minHeight: 18,
+                                      ),
+                                      child: Text(
+                                        _unreadMessages > 9 ? '9+' : _unreadMessages.toString(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            // Volunteer Dashboard Button
+                            if (_volunteer != null)
+                              IconButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const VolunteerDashboardScreen(),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(
+                                  Icons.volunteer_activism,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                                tooltip: 'Volunteer Dashboard',
+                              ),
+                            IconButton(
+                              onPressed: () {
+                                // Call emergency
+                                _showEmergencyDialog(context, provider);
+                              },
+                              icon: const Icon(
+                                Icons.phone,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
+
+                  // Volunteer Status Card (if volunteer)
+                  if (_volunteer != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const VolunteerDashboardScreen(),
+                            ),
+                          );
+                        },
+                        child: Card(
+                          color: _volunteer!.verificationLevel == VerificationLevel.backgroundChecked
+                              ? Colors.green.shade50
+                              : Colors.amber.shade50,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.volunteer_activism,
+                                  color: _volunteer!.verificationLevel == VerificationLevel.backgroundChecked
+                                      ? Colors.green
+                                      : Colors.amber.shade700,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Volunteer: ${_volunteer!.name}',
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        'Status: ${_volunteer!.verificationLevel.name.toUpperCase()}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: _volunteer!.verificationLevel == VerificationLevel.backgroundChecked
+                                              ? Colors.green
+                                              : Colors.amber.shade700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_forward_ios, size: 16),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (_volunteer != null) const SizedBox(height: 8),
 
                   // Location Card
                   Padding(
@@ -244,17 +421,9 @@ class _HomeScreenState extends State<HomeScreen>
                           isActive: provider.isLocationSharing,
                         ),
                         _buildQuickAction(
-                          icon: Icons.location_searching,
-                          label: 'Live\nTracking',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const TrackingScreen(),
-                              ),
-                            );
-                          },
-                          isActive: provider.isLocationSharing,
+                          icon: Icons.directions_walk,
+                          label: 'Safe\nJourney',
+                          onTap: () => _startSafeJourney(context),
                         ),
                         _buildQuickAction(
                           icon: Icons.call,
@@ -504,7 +673,10 @@ class _HomeScreenState extends State<HomeScreen>
               label: 'View',
               textColor: Colors.white,
               onPressed: () {
-                // TODO: Navigate to recordings list
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const RecordingsScreen()),
+                );
               },
             ),
           ),
@@ -544,6 +716,88 @@ class _HomeScreenState extends State<HomeScreen>
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => const FakeCallScheduler(),
+    );
+  }
+
+  /// Start safe journey with destination input
+  void _startSafeJourney(BuildContext context) {
+    final destinationController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Safe Journey',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Share your live location with trusted contacts while traveling',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: destinationController,
+              decoration: const InputDecoration(
+                labelText: 'Where are you going? (optional)',
+                hintText: 'e.g., Home, Office, Mall',
+                prefixIcon: Icon(Icons.location_on),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => EscortTrackingScreen(
+                        destination: destinationController.text.isNotEmpty
+                            ? destinationController.text
+                            : null,
+                      ),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE91E63),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('Start Safe Journey'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Center(
+              child: Text(
+                'Your contacts will receive SMS with live tracking link',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -6,6 +6,7 @@ import '../config/country_config.dart';
 import '../config/countries/base_country.dart';
 import '../l10n/app_localizations.dart';
 import 'ble_button_screen.dart';
+import 'volunteer/volunteer_registration_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -451,6 +452,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               const SizedBox(height: 24),
 
+              // Volunteer Section
+              const Text(
+                'Volunteer',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFE91E63),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              Card(
+                child: ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE91E63).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.volunteer_activism,
+                      color: Color(0xFFE91E63),
+                    ),
+                  ),
+                  title: const Text('Become a Volunteer'),
+                  subtitle: const Text(
+                    'Help keep others safe in your community',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const VolunteerRegistrationScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
               // About Section
               const Text(
                 'About',
@@ -508,7 +551,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'SafeHer',
+                      'Kaavala',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,

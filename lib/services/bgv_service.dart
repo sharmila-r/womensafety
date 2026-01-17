@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/volunteer.dart';
+import 'remote_config_service.dart';
 
 /// BGV Provider types
 enum BGVProvider {
@@ -73,6 +74,22 @@ class BGVService {
   // Checkr API Endpoint (USA)
   static const String _checkrBaseUrl = 'https://api.checkr.com';
 
+  // Skip API calls mode - can be controlled via Remote Config or locally
+  static bool _localSkipApiCalls = true;
+
+  /// Check if API calls should be skipped (from Remote Config or local override)
+  static bool get skipApiCalls {
+    // Try Remote Config first, fall back to local setting
+    try {
+      return RemoteConfigService.instance.bgvSkipApiCalls;
+    } catch (e) {
+      return _localSkipApiCalls;
+    }
+  }
+
+  // Alias for backwards compatibility
+  static bool get testMode => skipApiCalls;
+
   // API Credentials (should be in environment variables in production)
   String? _idfyApiKey;
   String? _idfyAccountId;
@@ -96,6 +113,15 @@ class BGVService {
     _webhookBaseUrl = webhookBaseUrl;
   }
 
+  /// Check if API calls are being skipped
+  static bool get isSkippingApiCalls => skipApiCalls;
+
+  /// Enable/disable skipping API calls locally (overrides Remote Config)
+  static void setSkipApiCalls(bool skip) {
+    _localSkipApiCalls = skip;
+    print('BGV Service skip API calls (local): ${skip ? "ENABLED" : "DISABLED"}');
+  }
+
   /// Get recommended provider based on country
   BGVProvider getRecommendedProvider(String countryCode) {
     switch (countryCode.toUpperCase()) {
@@ -109,15 +135,33 @@ class BGVService {
   }
 
   /// Get service radius based on verification stage (in km)
-  double getServiceRadius(BGVStage stage) {
+  /// Uses Remote Config for country-specific values
+  double getServiceRadius(BGVStage stage, {String countryCode = 'IN'}) {
+    final config = RemoteConfigService.instance;
+
     switch (stage) {
       case BGVStage.signup:
         return 0; // View only, cannot respond
       case BGVStage.basicKyc:
-        return 0.5; // 500m radius - Limited responder
+        // Get country-specific ID-verified radius from Remote Config
+        try {
+          return config.getIdVerifiedRadius(countryCode);
+        } catch (e) {
+          return 5.0; // Default fallback - same as BGV verified
+        }
       case BGVStage.fullBgv:
-        return 5.0; // 5km radius - Full responder
+        // Get country-specific BGV-verified radius from Remote Config
+        try {
+          return config.getBgvVerifiedRadius(countryCode);
+        } catch (e) {
+          return 5.0; // Default fallback
+        }
     }
+  }
+
+  /// Get service radius with default country (backwards compatible)
+  double getServiceRadiusDefault(BGVStage stage) {
+    return getServiceRadius(stage, countryCode: 'IN');
   }
 
   /// Get verification level from BGV stage
@@ -364,6 +408,27 @@ class BGVService {
     required String state,
     required String pincode,
   }) async {
+    // Test mode - return mock success immediately
+    if (testMode) {
+      print('=== BGV TEST MODE: Simulating IDfy Full BGV ===');
+      await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
+      return BGVResult(
+        requestId: 'test_bgv_$volunteerId',
+        taskId: 'test_task_$volunteerId',
+        stage: BGVStage.fullBgv,
+        status: BGVStatus.completed,
+        passed: true,
+        details: {
+          'test_mode': true,
+          'volunteer_id': volunteerId,
+          'name': name,
+          'checks_simulated': ['criminal_court', 'address_verification', 'police_verification'],
+          'all_clear': true,
+        },
+        timestamp: DateTime.now(),
+      );
+    }
+
     if (_idfyApiKey == null || _idfyAccountId == null) {
       throw Exception('IDfy API credentials not configured');
     }
@@ -540,6 +605,28 @@ class BGVService {
     required String state,
     required String zipcode,
   }) async {
+    // Test mode - return mock success immediately
+    if (testMode) {
+      print('=== BGV TEST MODE: Simulating Checkr Background Check ===');
+      await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
+      return BGVResult(
+        requestId: 'test_checkr_$volunteerId',
+        taskId: 'test_candidate_$volunteerId',
+        stage: BGVStage.fullBgv,
+        status: BGVStatus.completed,
+        passed: true,
+        details: {
+          'test_mode': true,
+          'volunteer_id': volunteerId,
+          'name': '$firstName $lastName',
+          'provider': 'checkr',
+          'checks_simulated': ['ssn_trace', 'criminal_records', 'sex_offender_registry', 'national_criminal'],
+          'all_clear': true,
+        },
+        timestamp: DateTime.now(),
+      );
+    }
+
     if (_checkrApiKey == null) {
       throw Exception('Checkr API key not configured');
     }

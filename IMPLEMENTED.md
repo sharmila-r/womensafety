@@ -1,10 +1,10 @@
-# SafeHer - Implemented Features
+# Kaavala - Implemented Features
 
 > Last Updated: January 2025
 
 ## Overview
 
-SafeHer (Kavalan) is a women's safety app with SOS alerts, location sharing, volunteer escort system, and harassment reporting. This document details all implemented features.
+Kaavala is a women's safety app with SOS alerts, location sharing, volunteer escort system, and harassment reporting. This document details all implemented features.
 
 ---
 

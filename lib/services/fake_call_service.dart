@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:just_audio/just_audio.dart';
 
 /// Fake call configuration
 class FakeCallConfig {
@@ -48,6 +50,8 @@ class FakeCallService {
   FakeCallConfig? _config;
   bool _isCallScheduled = false;
   bool _isCallActive = false;
+  bool _isRinging = false;
+  AudioPlayer? _audioPlayer;
 
   // Callbacks
   Function(FakeCallConfig)? onCallStart;
@@ -123,6 +127,7 @@ class FakeCallService {
   Future<void> _triggerFakeCall() async {
     _isCallScheduled = false;
     _isCallActive = true;
+    _isRinging = true;
 
     // Vibrate like a real call
     _startRingingVibration();
@@ -133,32 +138,63 @@ class FakeCallService {
     debugPrint('Fake call triggered from ${config.callerName}');
   }
 
-  /// Start ringing vibration pattern
+  /// Start ringing with vibration and ringtone
   void _startRingingVibration() {
-    // Vibrate in a pattern like a real phone call
     _vibratePattern();
+    _playRingtone();
   }
 
   Future<void> _vibratePattern() async {
-    while (_isCallActive) {
+    while (_isRinging) {
       await Vibration.vibrate(duration: 1000, amplitude: 255);
       await Future.delayed(const Duration(milliseconds: 500));
+      if (!_isRinging) break;
       await Vibration.vibrate(duration: 1000, amplitude: 255);
       await Future.delayed(const Duration(seconds: 2));
     }
   }
 
+  Future<void> _playRingtone() async {
+    try {
+      _audioPlayer = AudioPlayer();
+
+      // Use asset ringtone
+      await _audioPlayer!.setAsset('assets/audio/ringtone.mp3');
+      await _audioPlayer!.setLoopMode(LoopMode.one);
+      await _audioPlayer!.setVolume(1.0);
+      await _audioPlayer!.play();
+
+      debugPrint('Ringtone started');
+    } catch (e) {
+      debugPrint('Error playing ringtone: $e');
+    }
+  }
+
+  Future<void> _stopRingtone() async {
+    try {
+      await _audioPlayer?.stop();
+      await _audioPlayer?.dispose();
+      _audioPlayer = null;
+      debugPrint('Ringtone stopped');
+    } catch (e) {
+      debugPrint('Error stopping ringtone: $e');
+    }
+  }
+
   /// Answer the fake call
   void answerCall() {
-    _isCallActive = true;
+    _isRinging = false;
     Vibration.cancel();
+    _stopRingtone();
     debugPrint('Fake call answered');
   }
 
   /// End the fake call
   void endCall() {
     _isCallActive = false;
+    _isRinging = false;
     Vibration.cancel();
+    _stopRingtone();
     onCallEnd?.call();
     debugPrint('Fake call ended');
   }
@@ -166,7 +202,9 @@ class FakeCallService {
   /// Decline the fake call
   void declineCall() {
     _isCallActive = false;
+    _isRinging = false;
     Vibration.cancel();
+    _stopRingtone();
     onCallEnd?.call();
     debugPrint('Fake call declined');
   }

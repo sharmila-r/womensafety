@@ -1,5 +1,5 @@
 /**
- * Firebase Cloud Functions for SafeHer App
+ * Firebase Cloud Functions for Kaavala App
  * Handles push notification delivery for SOS alerts
  */
 

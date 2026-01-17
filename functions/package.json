@@ -1,6 +1,6 @@
 {
   "name": "safeher-functions",
-  "description": "Firebase Cloud Functions for SafeHer App",
+  "description": "Firebase Cloud Functions for Kaavala App",
   "version": "1.0.0",
   "scripts": {
     "serve": "firebase emulators:start --only functions",

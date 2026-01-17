@@ -1,4 +1,4 @@
-# SafeHer - Development TODO
+# Kaavala - Development TODO
 
 > Last Updated: January 2025
 
@@ -88,6 +88,14 @@
 - [ ] ⏳ Real-time escort tracking map
 - [x] Post-escort rating system
 
+### User-Volunteer Interaction 🔮
+- [ ] Browse nearby volunteers screen (list with distance, rating, badge)
+- [ ] Volunteer profile view for users
+- [ ] Direct escort request to specific volunteer
+- [x] Escort requests saved to Firestore
+- [x] In-app messaging between user and volunteer
+- [ ] Volunteer availability indicator on map
+
 ---
 
 ## Phase 4 - Reporting Pipeline ✅
@@ -136,11 +144,13 @@
 - [ ] Alert notifications to NGOs
 - [ ] Report status update notifications
 
-#### Real-time Escort Tracking
-- [ ] Live location sharing during escort
-- [ ] Map view for user and volunteer
+#### Real-time Escort Tracking ⏳
+- [x] Live location sharing during escort to trusted contacts
+- [x] Escort tracking screen with live map
+- [x] Share tracking link with trust network
 - [ ] ETA calculation
 - [ ] Route visualization
+- [ ] Volunteer location visible to user
 
 #### Geofencing
 - [ ] Define safe zones (home, work, etc.)

@@ -73,6 +73,21 @@ dependencies:
   # Bluetooth Low Energy for SOS buttons
   flutter_blue_plus: ^1.35.2
 
+  # WebView for KYC verification
+  webview_flutter: ^4.10.0
+  flutter_inappwebview: ^6.1.5
+
+  # Remote Config for API keys
+  firebase_remote_config: ^5.3.0
+
+  # Audio/Video Playback
+  just_audio: ^0.9.40
+  video_player: ^2.9.2
+  chewie: ^1.8.5
+
+  # Sharing
+  share_plus: ^10.1.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -83,3 +98,4 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/audio/
