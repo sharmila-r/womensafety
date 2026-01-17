@@ -95,8 +95,9 @@ class _HomeScreenState extends State<HomeScreen>
         child: SafeArea(
           child: Consumer<AppProvider>(
             builder: (context, provider, child) {
-              return Column(
-                children: [
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
                   // Header
                   Padding(
                     padding: const EdgeInsets.all(20),
@@ -327,7 +328,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ),
 
-                  const Spacer(),
+                  const SizedBox(height: 24),
 
                   // SOS Button
                   GestureDetector(
@@ -406,7 +407,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
 
-                  const Spacer(),
+                  const SizedBox(height: 24),
 
                   // Quick Actions - Row 1
                   Padding(
@@ -533,6 +534,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ),
                 ],
+                ),
               );
             },
           ),
