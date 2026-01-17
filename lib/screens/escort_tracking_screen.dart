@@ -1,16 +1,19 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:http/http.dart' as http;
 import '../providers/app_provider.dart';
 import '../services/background_location_service.dart';
 import '../services/location_service.dart';
 import '../services/sms_service.dart';
 import '../services/firebase_service.dart';
 import '../models/trusted_contact.dart';
+import '../config/env_config.dart';
 
 /// Real-time escort tracking screen
 /// Shares live location with trusted contacts during an escort/journey
@@ -18,12 +21,16 @@ class EscortTrackingScreen extends StatefulWidget {
   final String? escortId;
   final String? destination;
   final String? volunteerName;
+  final double? destinationLat;
+  final double? destinationLng;
 
   const EscortTrackingScreen({
     super.key,
     this.escortId,
     this.destination,
     this.volunteerName,
+    this.destinationLat,
+    this.destinationLng,
   });
 
   @override
@@ -51,6 +58,12 @@ class _EscortTrackingScreenState extends State<EscortTrackingScreen> {
   double _totalDistance = 0;
   bool _contactsNotified = false;
 
+  // ETA and route visualization
+  String? _etaText;
+  String? _distanceToDestination;
+  List<LatLng> _plannedRoute = [];
+  Timer? _etaUpdateTimer;
+
   @override
   void initState() {
     super.initState();
@@ -60,6 +73,7 @@ class _EscortTrackingScreenState extends State<EscortTrackingScreen> {
   @override
   void dispose() {
     _locationSubscription?.cancel();
+    _etaUpdateTimer?.cancel();
     super.dispose();
   }
 
@@ -77,6 +91,11 @@ class _EscortTrackingScreenState extends State<EscortTrackingScreen> {
           _currentPosition!.longitude,
         );
         _updateMarker(_currentPosition!);
+
+        // Fetch route and ETA if destination is provided
+        if (widget.destinationLat != null && widget.destinationLng != null) {
+          await _fetchRouteAndETA();
+        }
       }
 
       setState(() => _isLoading = false);
@@ -88,6 +107,147 @@ class _EscortTrackingScreenState extends State<EscortTrackingScreen> {
         );
       }
     }
+  }
+
+  /// Fetch route from Google Directions API and calculate ETA
+  Future<void> _fetchRouteAndETA() async {
+    if (_currentPosition == null ||
+        widget.destinationLat == null ||
+        widget.destinationLng == null) {
+      return;
+    }
+
+    try {
+      final apiKey = EnvConfig.googleMapsApiKey;
+      if (apiKey.isEmpty) {
+        debugPrint('Google Maps API key not configured');
+        return;
+      }
+
+      final origin = '${_currentPosition!.latitude},${_currentPosition!.longitude}';
+      final destination = '${widget.destinationLat},${widget.destinationLng}';
+
+      final url = Uri.parse(
+        'https://maps.googleapis.com/maps/api/directions/json'
+        '?origin=$origin'
+        '&destination=$destination'
+        '&mode=walking'
+        '&key=$apiKey',
+      );
+
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['status'] == 'OK' && data['routes'].isNotEmpty) {
+          final route = data['routes'][0];
+          final leg = route['legs'][0];
+
+          // Extract ETA and distance
+          final duration = leg['duration'];
+          final distance = leg['distance'];
+
+          setState(() {
+            _etaText = duration['text'];
+            _distanceToDestination = distance['text'];
+          });
+
+          // Decode polyline for route visualization
+          final encodedPolyline = route['overview_polyline']['points'];
+          _plannedRoute = _decodePolyline(encodedPolyline);
+          _updatePlannedRoutePolyline();
+
+          // Add destination marker
+          _addDestinationMarker();
+
+          debugPrint('ETA: $_etaText, Distance: $_distanceToDestination');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching route: $e');
+    }
+  }
+
+  /// Decode Google Maps encoded polyline
+  List<LatLng> _decodePolyline(String encoded) {
+    final List<LatLng> points = [];
+    int index = 0;
+    int lat = 0;
+    int lng = 0;
+
+    while (index < encoded.length) {
+      int shift = 0;
+      int result = 0;
+
+      int b;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1F) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+
+      int dlat = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1F) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+
+      int dlng = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
+      lng += dlng;
+
+      points.add(LatLng(lat / 1E5, lng / 1E5));
+    }
+
+    return points;
+  }
+
+  /// Update polyline with planned route
+  void _updatePlannedRoutePolyline() {
+    if (_plannedRoute.isEmpty) return;
+
+    _polylines.add(
+      Polyline(
+        polylineId: const PolylineId('planned_route'),
+        points: _plannedRoute,
+        color: Colors.blue.withOpacity(0.6),
+        width: 5,
+        patterns: [PatternItem.dash(20), PatternItem.gap(10)],
+      ),
+    );
+    setState(() {});
+  }
+
+  /// Add destination marker
+  void _addDestinationMarker() {
+    if (widget.destinationLat == null || widget.destinationLng == null) return;
+
+    _markers.add(
+      Marker(
+        markerId: const MarkerId('destination'),
+        position: LatLng(widget.destinationLat!, widget.destinationLng!),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+        infoWindow: InfoWindow(
+          title: 'Destination',
+          snippet: widget.destination ?? 'Your destination',
+        ),
+      ),
+    );
+    setState(() {});
+  }
+
+  /// Start periodic ETA updates
+  void _startETAUpdates() {
+    _etaUpdateTimer?.cancel();
+    _etaUpdateTimer = Timer.periodic(const Duration(minutes: 2), (_) {
+      _fetchRouteAndETA();
+    });
   }
 
   Future<void> _startTracking() async {
@@ -126,6 +286,11 @@ class _EscortTrackingScreenState extends State<EscortTrackingScreen> {
     if (!_contactsNotified) {
       await _notifyTrustedContacts(provider.emergencyContacts);
       _contactsNotified = true;
+    }
+
+    // Start periodic ETA updates if destination is set
+    if (widget.destinationLat != null && widget.destinationLng != null) {
+      _startETAUpdates();
     }
 
     setState(() => _isTracking = true);
@@ -402,7 +567,7 @@ class _EscortTrackingScreenState extends State<EscortTrackingScreen> {
   }
 
   Widget _buildStatusBar() {
-    if (!_isTracking) return const SizedBox.shrink();
+    if (!_isTracking && _etaText == null) return const SizedBox.shrink();
 
     final duration = _startTime != null
         ? DateTime.now().difference(_startTime!)
@@ -410,46 +575,72 @@ class _EscortTrackingScreenState extends State<EscortTrackingScreen> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: Colors.green.shade50,
+      color: _isTracking ? Colors.green.shade50 : Colors.blue.shade50,
       child: Row(
         children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: Colors.green,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.green.withValues(alpha: 0.5),
-                  blurRadius: 6,
-                  spreadRadius: 2,
+          if (_isTracking) ...[
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: Colors.green,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withValues(alpha: 0.5),
+                    blurRadius: 6,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'LIVE',
+              style: TextStyle(
+                color: Colors.green,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+          // ETA display
+          if (_etaText != null) ...[
+            if (_isTracking) const SizedBox(width: 16),
+            const Icon(Icons.schedule, size: 16, color: Colors.blue),
+            const SizedBox(width: 4),
+            Text(
+              'ETA: $_etaText',
+              style: const TextStyle(
+                color: Colors.blue,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (_distanceToDestination != null) ...[
+              const SizedBox(width: 8),
+              Text(
+                '($_distanceToDestination)',
+                style: TextStyle(
+                  color: Colors.blue.shade300,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+          const Spacer(),
+          if (_isTracking)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  _formatDuration(duration),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  '${(_totalDistance / 1000).toStringAsFixed(2)} km traveled',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          const Text(
-            'LIVE',
-            style: TextStyle(
-              color: Colors.green,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const Spacer(),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                _formatDuration(duration),
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              Text(
-                '${(_totalDistance / 1000).toStringAsFixed(2)} km',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
-          ),
         ],
       ),
     );

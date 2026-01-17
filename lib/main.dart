@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/app_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/contacts_screen.dart';
 import 'screens/escort_screen.dart';
 import 'screens/report_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'services/firebase_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/remote_config_service.dart';
@@ -105,9 +107,88 @@ class WomenSafetyApp extends StatelessWidget {
                 ),
               ),
             ),
-            home: const MainNavigationScreen(),
+            home: const SplashScreen(),
+            routes: {
+              '/home': (context) => const MainNavigationScreen(),
+              '/onboarding': (context) => const OnboardingScreen(),
+            },
           );
         },
+      ),
+    );
+  }
+}
+
+/// Splash screen to check onboarding status
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboarding();
+  }
+
+  Future<void> _checkOnboarding() async {
+    await Future.delayed(const Duration(milliseconds: 500)); // Brief splash
+
+    final prefs = await SharedPreferences.getInstance();
+    final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
+
+    if (mounted) {
+      if (onboardingComplete) {
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        Navigator.pushReplacementNamed(context, '/onboarding');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFE91E63), Color(0xFFFCE4EC)],
+          ),
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.shield,
+                size: 80,
+                color: Colors.white,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Kaavala',
+                style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Your Safety, Our Priority',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

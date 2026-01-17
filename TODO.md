@@ -2,6 +2,18 @@
 
 > Last Updated: January 2025
 
+---
+
+## Current Sprint 🚀
+
+### Completed
+- [x] Add onboarding screens for new users
+- [x] Report status update notifications (Cloud Function ready)
+- [x] ETA calculation for escort
+- [x] Route visualization for escort tracking
+
+---
+
 ## Legend
 - ✅ Completed
 - 🔄 In Progress

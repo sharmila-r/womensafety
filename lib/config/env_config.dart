@@ -117,6 +117,15 @@ class EnvConfig {
     return 0.7;
   }
 
+  // ==================== GOOGLE MAPS CONFIG ====================
+
+  static const String _googleMapsApiKeyEnv =
+      String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+  static String get googleMapsApiKey {
+    if (_googleMapsApiKeyEnv.isNotEmpty) return _googleMapsApiKeyEnv;
+    return DevKeys.googleMapsApiKey;
+  }
+
   // ==================== HELPERS ====================
 
   /// Check if Didit is configured

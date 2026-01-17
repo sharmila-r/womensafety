@@ -414,3 +414,116 @@ exports.cleanupNotificationQueue = functions.pubsub
       await batch.commit();
       console.log(`Cleaned up ${snapshot.size} old notifications`);
     });
+
+/**
+ * Send notification when report status changes
+ */
+exports.onReportStatusUpdate = functions.firestore
+    .document("reports/{reportId}")
+    .onUpdate(async (change, context) => {
+      const before = change.before.data();
+      const after = change.after.data();
+      const reportId = context.params.reportId;
+
+      // Only trigger if status changed
+      if (before.status === after.status) {
+        return null;
+      }
+
+      console.log(`Report ${reportId} status changed: ${before.status} -> ${after.status}`);
+
+      const userId = after.userId;
+      if (!userId) {
+        console.log("No userId on report");
+        return null;
+      }
+
+      // Get user's FCM token
+      const tokenDoc = await db.collection("userTokens").doc(userId).get();
+      const token = tokenDoc.data()?.token;
+
+      if (!token) {
+        console.log("No FCM token for user:", userId);
+        return null;
+      }
+
+      // Build notification based on status
+      let title;
+      let body;
+
+      switch (after.status) {
+        case "under_review":
+          title = "Report Under Review";
+          body = "Your report is being reviewed by our team.";
+          break;
+        case "investigating":
+          title = "Report Investigation Started";
+          body = "An investigation has been initiated for your report.";
+          break;
+        case "forwarded":
+          title = "Report Forwarded";
+          body = "Your report has been forwarded to the appropriate authorities.";
+          break;
+        case "resolved":
+          title = "Report Resolved";
+          body = "Your report has been resolved. Thank you for your submission.";
+          break;
+        case "closed":
+          title = "Report Closed";
+          body = "Your report has been closed.";
+          break;
+        default:
+          title = "Report Status Updated";
+          body = `Your report status has been updated to: ${after.status}`;
+      }
+
+      try {
+        await messaging.send({
+          token: token,
+          notification: {
+            title: title,
+            body: body,
+          },
+          data: {
+            type: "report_status_update",
+            reportId: reportId,
+            status: after.status,
+          },
+          android: {
+            priority: "high",
+            notification: {
+              channelId: "general",
+            },
+          },
+          apns: {
+            payload: {
+              aps: {
+                alert: {
+                  title: title,
+                  body: body,
+                },
+                sound: "default",
+                badge: 1,
+              },
+            },
+          },
+        });
+
+        console.log(`Report status notification sent to user ${userId}`);
+
+        // Store notification in user's notifications collection
+        await db.collection("users").doc(userId).collection("notifications").add({
+          type: "report_status_update",
+          title: title,
+          body: body,
+          reportId: reportId,
+          status: after.status,
+          read: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (error) {
+        console.error("Error sending report status notification:", error);
+      }
+
+      return null;
+    });
