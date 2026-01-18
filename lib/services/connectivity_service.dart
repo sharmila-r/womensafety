@@ -345,8 +345,9 @@ class SOSResult {
   bool pushSent = false;
   bool queued = false;
   int smsRecipients = 0;
+  int volunteersAlerted = 0;
 
-  bool get anySent => smsSent || pushSent;
+  bool get anySent => smsSent || pushSent || volunteersAlerted > 0;
 
   String get statusMessage {
     final messages = <String>[];
@@ -359,6 +360,10 @@ class SOSResult {
       messages.add('Push notification sent');
     } else if (queued) {
       messages.add('Push notification queued (offline)');
+    }
+
+    if (volunteersAlerted > 0) {
+      messages.add('$volunteersAlerted volunteer(s) alerted');
     }
 
     if (messages.isEmpty) {

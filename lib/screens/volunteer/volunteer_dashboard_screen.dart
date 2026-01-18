@@ -29,6 +29,7 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
   List<EscortRequest> _assignedRequests = [];
   bool _isLoading = true;
   bool _isOnline = false;
+  bool _sosAlertOptIn = false;
   Position? _currentPosition;
   Timer? _locationUpdateTimer;
 
@@ -86,6 +87,7 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
       if (_volunteer != null) {
         _isOnline = _volunteer!.availabilityStatus == AvailabilityStatus.available ||
                     _volunteer!.availabilityStatus == AvailabilityStatus.busy;
+        _sosAlertOptIn = _volunteer!.sosAlertOptIn;
 
         // Load assigned requests (confirmed or in-progress)
         _assignedRequests = await _loadAssignedRequests();
@@ -548,11 +550,54 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
                   label: Text('Service Radius: ${radius.toInt()} $unit'),
                 ),
               ),
+              const Divider(),
+              // SOS Alert Opt-in toggle
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Receive SOS Alerts',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          'Get notified when someone nearby needs help',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: _sosAlertOptIn,
+                    onChanged: _toggleSOSOptIn,
+                    activeColor: Colors.red,
+                  ),
+                ],
+              ),
             ],
           ],
         ),
       ),
     );
+  }
+
+  void _toggleSOSOptIn(bool value) async {
+    setState(() => _sosAlertOptIn = value);
+    try {
+      await _volunteerService.setSOSAlertOptIn(value);
+      _showSuccess(value ? 'SOS alerts enabled' : 'SOS alerts disabled');
+    } catch (e) {
+      _showError(e.toString());
+      setState(() => _sosAlertOptIn = !value); // Revert on error
+    }
   }
 
   Widget _buildRequestCard(EscortRequest request) {

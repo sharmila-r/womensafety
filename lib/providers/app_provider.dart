@@ -308,11 +308,18 @@ class AppProvider extends ChangeNotifier {
 
     SOSResult result = SOSResult();
 
-    if (_currentPosition != null && emergencyContacts.isNotEmpty) {
+    if (_currentPosition == null) {
+      debugPrint('SOS: No location available');
+      return result;
+    }
+
+    final currentUser = FirebaseService.instance.currentUser;
+    final userName = currentUser?.displayName ?? 'Someone';
+    final userPhone = currentUser?.phoneNumber ?? '';
+
+    // Send to emergency contacts if any
+    if (emergencyContacts.isNotEmpty) {
       final phones = emergencyContacts.map((c) => c.phone).toList();
-      final currentUser = FirebaseService.instance.currentUser;
-      final userName = currentUser?.displayName ?? 'Someone';
-      final userPhone = currentUser?.phoneNumber ?? '';
 
       // Use connectivity service for automatic offline fallback
       result = await _connectivityService.sendSOSWithFallback(
@@ -325,29 +332,34 @@ class AppProvider extends ChangeNotifier {
         message: customMessage,
       );
 
-      debugPrint('SOS Result: ${result.statusMessage}');
+      debugPrint('SOS to contacts: ${result.statusMessage}');
+    }
 
-      // Alert nearby volunteers if enabled
-      if (_alertNearbyVolunteers) {
-        try {
-          final volunteerResult = await _volunteerService.alertNearbyVolunteers(
-            senderName: userName,
-            senderPhone: userPhone,
-            latitude: _currentPosition!.latitude,
-            longitude: _currentPosition!.longitude,
-            address: _currentAddress,
-            message: customMessage,
-          );
-          debugPrint('Volunteer Alert: ${volunteerResult.statusMessage}');
-        } catch (e) {
-          debugPrint('Failed to alert volunteers: $e');
+    // Alert nearby volunteers if enabled (independent of emergency contacts)
+    if (_alertNearbyVolunteers) {
+      try {
+        final volunteerResult = await _volunteerService.alertNearbyVolunteers(
+          senderName: userName,
+          senderPhone: userPhone,
+          latitude: _currentPosition!.latitude,
+          longitude: _currentPosition!.longitude,
+          address: _currentAddress,
+          message: customMessage,
+        );
+        debugPrint('Volunteer Alert: ${volunteerResult.statusMessage}');
+
+        // Update result with volunteer info
+        if (volunteerResult.success) {
+          result.volunteersAlerted = volunteerResult.volunteersAlerted;
         }
+      } catch (e) {
+        debugPrint('Failed to alert volunteers: $e');
       }
+    }
 
-      // Auto-start audio recording if enabled
-      if (autoRecord && !_isRecording) {
-        await startAudioRecording();
-      }
+    // Auto-start audio recording if enabled
+    if (autoRecord && !_isRecording) {
+      await startAudioRecording();
     }
 
     // For silent SOS (duress code), don't show as active
