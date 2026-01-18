@@ -114,6 +114,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Alert Nearby Volunteers Toggle
+              Card(
+                child: SwitchListTile(
+                  title: const Text('Alert Nearby Volunteers'),
+                  subtitle: const Text(
+                    'Send SOS alerts to verified volunteers nearby',
+                  ),
+                  value: provider.alertNearbyVolunteers,
+                  onChanged: (value) => provider.setAlertNearbyVolunteers(value),
+                  activeColor: const Color(0xFFE91E63),
+                  secondary: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: provider.alertNearbyVolunteers
+                          ? const Color(0xFFE91E63).withOpacity(0.1)
+                          : Colors.grey.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.people,
+                      color: provider.alertNearbyVolunteers
+                          ? const Color(0xFFE91E63)
+                          : Colors.grey,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+
               // Auto-Alert Toggle
               Card(
                 child: SwitchListTile(

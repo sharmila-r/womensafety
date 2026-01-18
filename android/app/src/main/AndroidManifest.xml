@@ -21,6 +21,9 @@
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.SEND_SMS" />
 
+    <!-- Contacts for Trusted Contacts Import -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
     <!-- Camera for Report Photos & KYC -->
     <uses-permission android:name="android.permission.CAMERA" />
 

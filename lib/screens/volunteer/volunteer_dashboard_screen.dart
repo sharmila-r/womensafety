@@ -53,11 +53,11 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
   }
 
   Future<void> _updateLocationForActiveEscorts() async {
-    if (_assignedRequests.isEmpty) return;
+    if (!mounted || _assignedRequests.isEmpty) return;
 
     try {
       final position = await LocationService.getCurrentLocation();
-      if (position == null) return;
+      if (position == null || !mounted) return;
 
       // Update location for all in-progress escorts
       for (final request in _assignedRequests) {
@@ -76,6 +76,7 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
@@ -98,10 +99,12 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
         }
       }
     } catch (e) {
-      _showError(e.toString());
+      if (mounted) _showError(e.toString());
     }
 
-    setState(() => _isLoading = false);
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<List<EscortRequest>> _loadAssignedRequests() async {
@@ -139,10 +142,7 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadData,
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => _showSettingsDialog(),
+            tooltip: 'Refresh',
           ),
         ],
       ),
@@ -541,20 +541,12 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
             ),
             if (_isOnline) ...[
               const Divider(),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  TextButton.icon(
-                    onPressed: () => _showRadiusDialog(),
-                    icon: const Icon(Icons.tune),
-                    label: Text('${radius.toInt()} $unit'),
-                  ),
-                  TextButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.schedule),
-                    label: const Text('Schedule'),
-                  ),
-                ],
+              Center(
+                child: TextButton.icon(
+                  onPressed: () => _showRadiusDialog(),
+                  icon: const Icon(Icons.tune),
+                  label: Text('Service Radius: ${radius.toInt()} $unit'),
+                ),
               ),
             ],
           ],
@@ -978,10 +970,6 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
         ),
       ),
     );
-  }
-
-  void _showSettingsDialog() {
-    // Show volunteer settings
   }
 
   void _viewRequestDetails(EscortRequest request) {
