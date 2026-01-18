@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' show Color;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -171,27 +172,36 @@ class PushNotificationService {
 
   /// Handle foreground messages
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    print('Foreground message received: ${message.messageId}');
+    debugPrint('Foreground message received: ${message.messageId}');
+    debugPrint('Message data: ${message.data}');
+    debugPrint('Message notification: ${message.notification?.title} - ${message.notification?.body}');
 
     final data = message.data;
     final notification = message.notification;
 
     // Determine channel based on message type
     String channelId = _generalChannelId;
-    if (data['type'] == 'sos_alert') {
+    if (data['type'] == 'sos_alert' || data['type'] == 'sos_volunteer_alert') {
       channelId = _sosChannelId;
     } else if (data['type'] == 'escort_request') {
       channelId = _escortChannelId;
     }
 
+    final title = notification?.title ?? data['title'] ?? 'Kaavala Alert';
+    final body = notification?.body ?? data['body'] ?? '';
+
+    debugPrint('Showing notification: $title - $body on channel $channelId');
+
     // Show local notification
     await _showLocalNotification(
       id: message.hashCode,
-      title: notification?.title ?? data['title'] ?? 'Kaavala Alert',
-      body: notification?.body ?? data['body'] ?? '',
+      title: title,
+      body: body,
       channelId: channelId,
       payload: jsonEncode(data),
     );
+
+    debugPrint('Local notification shown');
   }
 
   /// Handle notification tap
@@ -212,10 +222,14 @@ class PushNotificationService {
   /// Navigate based on notification data
   void _navigateBasedOnNotification(Map<String, dynamic> data) {
     final type = data['type'];
+    debugPrint('Navigating for notification type: $type');
+    debugPrint('Notification data: $data');
+
     switch (type) {
       case 'sos_alert':
+      case 'sos_volunteer_alert':
         // Navigate to SOS response screen
-        // TODO: Implement navigation
+        _navigateToSOSResponse(data);
         break;
       case 'escort_request':
         // Navigate to escort request screen
@@ -224,6 +238,34 @@ class PushNotificationService {
         // Navigate to report details
         break;
     }
+  }
+
+  /// Navigate to SOS response screen
+  void _navigateToSOSResponse(Map<String, dynamic> data) {
+    // Use the global navigator key from main.dart
+    final navigatorKey = _getNavigatorKey();
+    if (navigatorKey?.currentState == null) {
+      debugPrint('Navigator not available for SOS response navigation');
+      return;
+    }
+
+    navigatorKey!.currentState!.pushNamed(
+      '/sos-response',
+      arguments: data,
+    );
+  }
+
+  /// Get the global navigator key
+  GlobalKey<NavigatorState>? _getNavigatorKey() {
+    // This should be set from main.dart
+    return _navigatorKey;
+  }
+
+  static GlobalKey<NavigatorState>? _navigatorKey;
+
+  /// Set the navigator key (call from main.dart)
+  static void setNavigatorKey(GlobalKey<NavigatorState> key) {
+    _navigatorKey = key;
   }
 
   /// Show local notification

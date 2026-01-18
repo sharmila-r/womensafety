@@ -12,6 +12,7 @@ import 'screens/report_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/auth/phone_login_screen.dart';
+import 'screens/volunteer/sos_response_screen.dart';
 import 'services/firebase_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/remote_config_service.dart';
@@ -36,6 +37,9 @@ void main() async {
 
     // Initialize push notifications
     await PushNotificationService().initialize();
+
+    // Set navigator key for notification navigation
+    PushNotificationService.setNavigatorKey(navigatorKey);
 
     // Initialize Remote Config (for API keys and feature flags)
     await RemoteConfigService.instance.initialize();
@@ -117,6 +121,25 @@ class WomenSafetyApp extends StatelessWidget {
                 title: 'Sign In',
                 subtitle: 'Sign in to access all features',
               ),
+            },
+            onGenerateRoute: (settings) {
+              if (settings.name == '/sos-response') {
+                final data = settings.arguments as Map<String, dynamic>?;
+                if (data != null) {
+                  return MaterialPageRoute(
+                    builder: (context) => SOSResponseScreen(
+                      alertId: data['alertId'] ?? '',
+                      senderName: data['senderName'] ?? 'Someone',
+                      senderPhone: data['senderPhone'] ?? '',
+                      latitude: double.tryParse(data['latitude']?.toString() ?? '0') ?? 0,
+                      longitude: double.tryParse(data['longitude']?.toString() ?? '0') ?? 0,
+                      address: data['address'] ?? 'Unknown location',
+                      message: data['message'],
+                    ),
+                  );
+                }
+              }
+              return null;
             },
           );
         },
