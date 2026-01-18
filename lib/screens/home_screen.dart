@@ -643,14 +643,28 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _triggerSOS(BuildContext context, AppProvider provider) {
-    if (provider.emergencyContacts.isEmpty) {
+    final hasContacts = provider.emergencyContacts.isNotEmpty;
+    final alertVolunteers = provider.alertNearbyVolunteers;
+
+    // Block only if no emergency contacts AND not alerting volunteers
+    if (!hasContacts && !alertVolunteers) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please add emergency contacts first!'),
+          content: Text('Please add emergency contacts or enable "Alert Nearby Volunteers" in Settings'),
           backgroundColor: Colors.orange,
         ),
       );
       return;
+    }
+
+    // Build message based on who will be alerted
+    String alertMessage;
+    if (hasContacts && alertVolunteers) {
+      alertMessage = 'This will send your location to emergency contacts and nearby volunteers. Continue?';
+    } else if (hasContacts) {
+      alertMessage = 'This will send your location to all emergency contacts. Continue?';
+    } else {
+      alertMessage = 'This will alert nearby verified volunteers. Continue?';
     }
 
     showDialog(
@@ -663,9 +677,7 @@ class _HomeScreenState extends State<HomeScreen>
             Text('Confirm SOS'),
           ],
         ),
-        content: const Text(
-          'This will send your location to all emergency contacts. Continue?',
-        ),
+        content: Text(alertMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -675,9 +687,20 @@ class _HomeScreenState extends State<HomeScreen>
             onPressed: () {
               Navigator.pop(context);
               provider.triggerSOS();
+
+              // Show appropriate confirmation message
+              String confirmMsg;
+              if (hasContacts && alertVolunteers) {
+                confirmMsg = 'SOS Alert sent to contacts and nearby volunteers!';
+              } else if (hasContacts) {
+                confirmMsg = 'SOS Alert sent to emergency contacts!';
+              } else {
+                confirmMsg = 'SOS Alert sent to nearby volunteers!';
+              }
+
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('SOS Alert sent to emergency contacts!'),
+                SnackBar(
+                  content: Text(confirmMsg),
                   backgroundColor: Colors.red,
                 ),
               );

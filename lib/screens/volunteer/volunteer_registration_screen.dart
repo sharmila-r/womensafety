@@ -1245,9 +1245,11 @@ class _VolunteerRegistrationScreenState
 
         setState(() => _isLoading = true);
         try {
+          // Include country code in phone number
+          final fullPhoneNumber = '${_countryManager.phoneCode}${_phoneController.text.trim()}';
           _volunteerId = await _volunteerService.registerVolunteer(
             name: _nameController.text,
-            phone: _phoneController.text,
+            phone: fullPhoneNumber,
             email: _emailController.text.isEmpty ? null : _emailController.text,
             bio: _bioController.text.isEmpty ? null : _bioController.text,
             country: _countryManager.current.countryCode,
