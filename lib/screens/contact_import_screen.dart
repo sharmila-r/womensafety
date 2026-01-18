@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../models/trusted_contact.dart';
@@ -18,6 +19,7 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
   bool _isLoading = true;
   String _searchQuery = '';
   bool _hasPermission = false;
+  bool _isPermanentlyDenied = false;
 
   @override
   void initState() {
@@ -26,16 +28,33 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
   }
 
   Future<void> _loadContacts() async {
-    final hasPermission = await FlutterContacts.requestPermission();
+    setState(() => _isLoading = true);
 
-    if (!hasPermission) {
+    // Check permission status first
+    final status = await Permission.contacts.status;
+
+    if (status.isPermanentlyDenied) {
       setState(() {
         _hasPermission = false;
+        _isPermanentlyDenied = true;
         _isLoading = false;
       });
       return;
     }
 
+    // Request permission
+    final result = await Permission.contacts.request();
+
+    if (!result.isGranted) {
+      setState(() {
+        _hasPermission = false;
+        _isPermanentlyDenied = result.isPermanentlyDenied;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    // Permission granted, load contacts
     final contacts = await FlutterContacts.getContacts(
       withProperties: true,
       withPhoto: true,
@@ -50,8 +69,19 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
     setState(() {
       _phoneContacts = validContacts;
       _hasPermission = true;
+      _isPermanentlyDenied = false;
       _isLoading = false;
     });
+  }
+
+  Future<void> _openAppSettings() async {
+    final opened = await openAppSettings();
+    if (opened) {
+      // When user returns from settings, reload contacts
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) _loadContacts();
+      });
+    }
   }
 
   List<Contact> get _filteredContacts {
@@ -174,15 +204,40 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Please grant contact permission to import your trusted contacts.',
+              Text(
+                _isPermanentlyDenied
+                    ? 'Contact permission was denied. Please enable it in app settings to import your trusted contacts.'
+                    : 'Please grant contact permission to import your trusted contacts.',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _loadContacts,
-                child: const Text('Grant Permission'),
-              ),
+              if (_isPermanentlyDenied) ...[
+                ElevatedButton.icon(
+                  onPressed: _openAppSettings,
+                  icon: const Icon(Icons.settings),
+                  label: const Text('Open Settings'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE91E63),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: _loadContacts,
+                  child: const Text('Check Again'),
+                ),
+              ] else
+                ElevatedButton.icon(
+                  onPressed: _loadContacts,
+                  icon: const Icon(Icons.security),
+                  label: const Text('Grant Permission'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE91E63),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ),
             ],
           ),
         ),
