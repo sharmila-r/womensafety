@@ -11,9 +11,11 @@ import 'screens/escort_screen.dart';
 import 'screens/report_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/auth/phone_login_screen.dart';
 import 'services/firebase_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/remote_config_service.dart';
+import 'services/auth_service.dart';
 import 'l10n/app_localizations.dart';
 
 /// Background message handler - must be top-level
@@ -111,6 +113,10 @@ class WomenSafetyApp extends StatelessWidget {
             routes: {
               '/home': (context) => const MainNavigationScreen(),
               '/onboarding': (context) => const OnboardingScreen(),
+              '/login': (context) => const PhoneLoginScreen(
+                title: 'Sign In',
+                subtitle: 'Sign in to access all features',
+              ),
             },
           );
         },
@@ -128,24 +134,31 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  final AuthService _authService = AuthService();
+
   @override
   void initState() {
     super.initState();
-    _checkOnboarding();
+    _checkAppState();
   }
 
-  Future<void> _checkOnboarding() async {
+  Future<void> _checkAppState() async {
     await Future.delayed(const Duration(milliseconds: 500)); // Brief splash
 
     final prefs = await SharedPreferences.getInstance();
     final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
 
-    if (mounted) {
-      if (onboardingComplete) {
-        Navigator.pushReplacementNamed(context, '/home');
-      } else {
-        Navigator.pushReplacementNamed(context, '/onboarding');
-      }
+    if (!mounted) return;
+
+    if (!onboardingComplete) {
+      // First time user - show onboarding
+      Navigator.pushReplacementNamed(context, '/onboarding');
+    } else if (!_authService.isLoggedIn) {
+      // Onboarding done but not logged in - show login
+      Navigator.pushReplacementNamed(context, '/login');
+    } else {
+      // Logged in - go to home
+      Navigator.pushReplacementNamed(context, '/home');
     }
   }
 

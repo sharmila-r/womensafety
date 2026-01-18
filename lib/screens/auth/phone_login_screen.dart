@@ -121,7 +121,8 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
       );
 
       if (credential != null && mounted) {
-        Navigator.pop(context, true); // Return success
+        // Navigate to home after successful login
+        Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
       setState(() {
@@ -135,7 +136,8 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
     try {
       await FirebaseAuth.instance.signInWithCredential(credential);
       if (mounted) {
-        Navigator.pop(context, true); // Return success
+        // Navigate to home after successful login
+        Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
       setState(() {

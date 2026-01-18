@@ -12,6 +12,9 @@
 - [x] ETA calculation for escort
 - [x] Route visualization for escort tracking
 
+### Pending
+- [ ] Filter out user's own escort requests from volunteer dashboard
+
 ---
 
 ## Legend

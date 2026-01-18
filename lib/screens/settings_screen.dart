@@ -5,6 +5,7 @@ import '../providers/app_provider.dart';
 import '../config/country_config.dart';
 import '../config/countries/base_country.dart';
 import '../l10n/app_localizations.dart';
+import '../services/auth_service.dart';
 import 'ble_button_screen.dart';
 import 'volunteer/volunteer_registration_screen.dart';
 
@@ -17,6 +18,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _countryManager = CountryConfigManager();
+  final _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
@@ -494,6 +496,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               const SizedBox(height: 24),
 
+              // Account Section
+              const Text(
+                'Account',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFE91E63),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              Card(
+                child: Column(
+                  children: [
+                    if (_authService.currentUser?.phoneNumber != null)
+                      ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE91E63).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.phone,
+                            color: Color(0xFFE91E63),
+                          ),
+                        ),
+                        title: const Text('Phone Number'),
+                        subtitle: Text(_authService.currentUser!.phoneNumber!),
+                      ),
+                    if (_authService.currentUser?.phoneNumber != null)
+                      const Divider(height: 1),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.logout,
+                          color: Colors.red,
+                        ),
+                      ),
+                      title: const Text(
+                        'Sign Out',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      subtitle: const Text('Sign out of your account'),
+                      onTap: () => _showSignOutDialog(context),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
               // About Section
               const Text(
                 'About',
@@ -837,5 +896,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
+  }
+
+  void _showSignOutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+              await _authService.signOut();
+              if (mounted) {
+                // Navigate to login screen
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/login',
+                  (route) => false,
+                );
+              }
+            },
+            child: const Text(
+              'Sign Out',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
