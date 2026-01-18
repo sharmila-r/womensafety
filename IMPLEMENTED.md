@@ -1,6 +1,6 @@
 # Kaavala - Implemented Features
 
-> Last Updated: January 2025
+> Last Updated: January 2025 (v1.1)
 
 ## Overview
 
@@ -381,6 +381,123 @@ google_maps_flutter: ^2.10.0
 | `idVerified` | Verified | 500m | KYC complete (Aadhaar/ID + Face Match) |
 | `backgroundChecked` | Active | 5km | Full BGV cleared |
 | `trusted` | Trusted | 5km | Vouched by verified NGO |
+
+---
+
+## Phase 7 - Escort Experience & Volunteer Discovery ✅
+
+### Escort Status Screen ✅
+- **Status Screen** (`lib/screens/escort_status_screen.dart`)
+  - Real-time status tracking with progress steps:
+    - Requested → Confirmed → In Progress → Completed
+  - Automatic navigation after submitting escort request
+  - Tap any request card to view status
+
+- **Features:**
+  - Visual progress indicator with timestamps
+  - Cancellation reason display for cancelled requests
+  - Request details card (event, location, time, notes)
+  - Volunteer info card when assigned
+
+### Live Volunteer Tracking ✅
+- **Map Integration** in Escort Status Screen
+  - Collapsible live tracking map
+  - Pink marker for pickup location
+  - Green marker for volunteer's real-time location
+  - Auto-updates every 10 seconds
+
+- **Location Service** (`lib/services/escort_request_service.dart`)
+  - `updateVolunteerLocation()` - Volunteer sends location updates
+  - `streamVolunteerLocation()` - User receives real-time location stream
+  - Stored as GeoPoint in Firestore with timestamp
+
+- **Volunteer Dashboard Updates** (`lib/screens/volunteer/volunteer_dashboard_screen.dart`)
+  - Automatic location broadcasting during active escorts
+  - Timer-based updates every 10 seconds
+  - Only broadcasts for in-progress escorts
+
+### Volunteer Dashboard Enhancements ✅
+- **"Your Active Escorts" Section**
+  - Shows assigned requests (confirmed or in-progress)
+  - Visual status badges (CONFIRMED / IN PROGRESS)
+  - User contact info (name, phone)
+
+- **Escort Actions:**
+  - **Chat** button - Open chat with user
+  - **Start** button - Begin escort (changes status to in-progress)
+  - **Complete** button - Finish escort with confirmation dialog
+  - **Cancel Assignment** - Cancel with reason input
+
+- **Default View Toggle**
+  - Volunteer dashboard shows by default for verified volunteers
+  - "User View" floating button to switch to SOS home screen
+  - Back button also returns to user view
+
+### Nearby Volunteers Screen ✅
+- **Screen** (`lib/screens/nearby_volunteers_screen.dart`)
+  - List of verified volunteers within configurable radius
+  - Default 10km, adjustable (5, 10, 15, 25, 50 km)
+
+- **Volunteer Cards Display:**
+  - Profile photo or initials
+  - Name with verification badge
+  - Star rating and review count
+  - Total escorts completed
+  - Distance from user
+  - Bio preview (2 lines)
+
+- **Sorting:**
+  - Available volunteers first
+  - Then by rating (highest first)
+
+- **Access:** Home screen → "Nearby Volunteers" quick action
+
+### Volunteer Profile Screen ✅
+- **Screen** (`lib/screens/volunteer_profile_screen.dart`)
+  - Full profile view with hero header
+  - Profile photo, name, verification badge
+
+- **Stats Row:**
+  - Average rating
+  - Total escorts
+  - Review count
+
+- **Verification Timeline:**
+  - Phone verified (with date)
+  - ID verified (with date)
+  - Background check (with date)
+  - Trusted status badge
+
+- **Reviews Section:**
+  - Star ratings
+  - Review comments
+  - Review dates
+  - "No reviews yet" empty state
+
+### Home Screen Updates ✅
+- **New Quick Action Row:**
+  - "Nearby Volunteers" - View verified volunteers nearby
+  - "My Recordings" - Access saved audio/video recordings
+  - "Safety Map" - Coming soon placeholder
+
+### Key Files Added
+| File | Purpose |
+|------|---------|
+| `lib/screens/escort_status_screen.dart` | Escort request status with live map |
+| `lib/screens/nearby_volunteers_screen.dart` | Browse nearby verified volunteers |
+| `lib/screens/volunteer_profile_screen.dart` | Volunteer detail/profile view |
+
+### Firestore Indexes Added
+```json
+{
+  "collectionGroup": "chats",
+  "fields": ["participants (array-contains)", "updatedAt (desc)"]
+},
+{
+  "collectionGroup": "messages",
+  "fields": ["senderId", "isRead"]
+}
+```
 
 ---
 
