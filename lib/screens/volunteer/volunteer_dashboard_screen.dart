@@ -1,10 +1,15 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../models/volunteer.dart';
 import '../../models/escort_request.dart';
 import '../../services/volunteer_service.dart';
+import '../../services/escort_request_service.dart';
 import '../../services/location_service.dart';
 import '../../services/remote_config_service.dart';
+import '../chat_screen.dart';
 import 'volunteer_registration_screen.dart';
 
 class VolunteerDashboardScreen extends StatefulWidget {
@@ -17,17 +22,57 @@ class VolunteerDashboardScreen extends StatefulWidget {
 
 class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
   final _volunteerService = VolunteerService();
+  final _escortRequestService = EscortRequestService();
 
   Volunteer? _volunteer;
   List<EscortRequest> _nearbyRequests = [];
+  List<EscortRequest> _assignedRequests = [];
   bool _isLoading = true;
   bool _isOnline = false;
   Position? _currentPosition;
+  Timer? _locationUpdateTimer;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _startLocationUpdates();
+  }
+
+  @override
+  void dispose() {
+    _locationUpdateTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startLocationUpdates() {
+    // Update location every 10 seconds when there are active escorts
+    _locationUpdateTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      _updateLocationForActiveEscorts();
+    });
+  }
+
+  Future<void> _updateLocationForActiveEscorts() async {
+    if (_assignedRequests.isEmpty) return;
+
+    try {
+      final position = await LocationService.getCurrentLocation();
+      if (position == null) return;
+
+      // Update location for all in-progress escorts
+      for (final request in _assignedRequests) {
+        if (request.status == EscortRequestStatus.inProgress) {
+          await _escortRequestService.updateVolunteerLocation(
+            requestId: request.id,
+            latitude: position.latitude,
+            longitude: position.longitude,
+          );
+        }
+      }
+    } catch (e) {
+      // Silently fail - location update is not critical
+      debugPrint('Failed to update location: $e');
+    }
   }
 
   Future<void> _loadData() async {
@@ -38,7 +83,11 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
       _currentPosition = await LocationService.getCurrentLocation();
 
       if (_volunteer != null) {
-        _isOnline = _volunteer!.availabilityStatus == AvailabilityStatus.available;
+        _isOnline = _volunteer!.availabilityStatus == AvailabilityStatus.available ||
+                    _volunteer!.availabilityStatus == AvailabilityStatus.busy;
+
+        // Load assigned requests (confirmed or in-progress)
+        _assignedRequests = await _loadAssignedRequests();
 
         if (_isOnline && _currentPosition != null) {
           _nearbyRequests = await _volunteerService.getNearbyRequests(
@@ -53,6 +102,18 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
     }
 
     setState(() => _isLoading = false);
+  }
+
+  Future<List<EscortRequest>> _loadAssignedRequests() async {
+    if (_volunteer == null) return [];
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('escortRequests')
+        .where('assignedVolunteerId', isEqualTo: _volunteer!.id)
+        .where('status', whereIn: ['confirmed', 'inProgress'])
+        .get();
+
+    return snapshot.docs.map((doc) => EscortRequest.fromFirestore(doc)).toList();
   }
 
   @override
@@ -106,8 +167,22 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
             _buildOnlineToggle(),
             const SizedBox(height: 24),
 
+            // Assigned Requests (show first if any)
+            if (_assignedRequests.isNotEmpty) ...[
+              const Text(
+                'Your Active Escorts',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ..._assignedRequests.map((request) => _buildAssignedRequestCard(request)),
+              const SizedBox(height: 24),
+            ],
+
             // Nearby Requests
-            if (_isOnline) ...[
+            if (_isOnline && _assignedRequests.isEmpty) ...[
               const Text(
                 'Nearby Requests',
                 style: TextStyle(
@@ -362,7 +437,7 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
           child: _buildStatCard(
             icon: Icons.location_on,
             value: '${_volunteer!.serviceRadiusKm.toInt()}',
-            label: 'km radius',
+            label: _volunteer!.country == 'US' ? 'miles radius' : 'km radius',
             color: Colors.blue,
           ),
         ),
@@ -592,6 +667,245 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
     );
   }
 
+  Widget _buildAssignedRequestCard(EscortRequest request) {
+    final isInProgress = request.status == EscortRequestStatus.inProgress;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: isInProgress ? Colors.blue.withOpacity(0.05) : Colors.green.withOpacity(0.05),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: isInProgress ? Colors.blue : Colors.green,
+                  child: const Icon(Icons.person, color: Colors.white),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        request.userName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        request.eventName,
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isInProgress ? Colors.blue : Colors.green,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    isInProgress ? 'IN PROGRESS' : 'CONFIRMED',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    request.eventLocation,
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                const SizedBox(width: 4),
+                Text(
+                  _formatDateTime(request.eventDateTime),
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+              ],
+            ),
+            if (request.userPhone != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.phone, size: 16, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Text(
+                    request.userPhone!,
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                // Chat button
+                if (request.chatId != null)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatScreen(
+                              chatId: request.chatId!,
+                              otherUserName: request.userName,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.chat),
+                      label: const Text('Chat'),
+                    ),
+                  ),
+                const SizedBox(width: 12),
+                // Start/Complete button
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => isInProgress
+                        ? _completeEscort(request)
+                        : _startEscort(request),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isInProgress ? Colors.green : Colors.blue,
+                    ),
+                    icon: Icon(isInProgress ? Icons.check_circle : Icons.play_arrow),
+                    label: Text(isInProgress ? 'Complete' : 'Start'),
+                  ),
+                ),
+              ],
+            ),
+            // Cancel option
+            if (!isInProgress)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Center(
+                  child: TextButton(
+                    onPressed: () => _cancelAssignedRequest(request),
+                    child: const Text(
+                      'Cancel Assignment',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _startEscort(EscortRequest request) async {
+    try {
+      await _escortRequestService.startEscort(request.id);
+      _showSuccess('Escort started!');
+      _loadData();
+    } catch (e) {
+      _showError(e.toString());
+    }
+  }
+
+  Future<void> _completeEscort(EscortRequest request) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Complete Escort?'),
+        content: const Text(
+          'Confirm that you have safely escorted the user to their destination.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Not Yet'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('Complete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _escortRequestService.completeEscort(request.id);
+        _showSuccess('Escort completed! Thank you for helping.');
+        _loadData();
+      } catch (e) {
+        _showError(e.toString());
+      }
+    }
+  }
+
+  Future<void> _cancelAssignedRequest(EscortRequest request) async {
+    final reasonController = TextEditingController();
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Assignment?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Please provide a reason for cancellation:'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                hintText: 'Reason...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _escortRequestService.volunteerCancelRequest(
+          request.id,
+          reasonController.text.isEmpty ? 'Cancelled by volunteer' : reasonController.text,
+        );
+        _showSuccess('Assignment cancelled');
+        _loadData();
+      } catch (e) {
+        _showError(e.toString());
+      }
+    }
+  }
+
   String _formatDateTime(DateTime dateTime) {
     final now = DateTime.now();
     if (dateTime.day == now.day &&
@@ -635,16 +949,19 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
   }
 
   void _showRadiusDialog() {
+    final isUS = _volunteer!.country == 'US';
+    final unit = isUS ? 'miles' : 'km';
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Service Radius'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [5, 10, 15, 20, 25].map((km) {
+          children: [5, 10, 15, 20, 25].map((value) {
             return ListTile(
-              title: Text('$km km'),
-              trailing: _volunteer!.serviceRadiusKm == km
+              title: Text('$value $unit'),
+              trailing: _volunteer!.serviceRadiusKm == value
                   ? const Icon(Icons.check, color: Color(0xFFE91E63))
                   : null,
               onTap: () async {
@@ -652,7 +969,7 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
                 await _volunteerService.updateAvailability(
                   status: _volunteer!.availabilityStatus,
                   isAcceptingRequests: _volunteer!.isAcceptingRequests,
-                  serviceRadiusKm: km.toDouble(),
+                  serviceRadiusKm: value.toDouble(),
                 );
                 _loadData();
               },
@@ -695,8 +1012,26 @@ class _VolunteerDashboardScreenState extends State<VolunteerDashboardScreen> {
 
     if (confirm == true) {
       try {
-        await _volunteerService.acceptEscortRequest(request.id);
-        _showSuccess('Request accepted! Contact the user to coordinate.');
+        // Use escort request service for full flow (chat creation, notifications)
+        await _escortRequestService.acceptRequest(request.id);
+        _showSuccess('Request accepted!');
+
+        // Get updated request with chat ID
+        final updatedRequest = await _escortRequestService.getRequest(request.id);
+
+        if (mounted && updatedRequest?.chatId != null) {
+          // Navigate to chat screen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatScreen(
+                chatId: updatedRequest!.chatId!,
+                otherUserName: updatedRequest.userName,
+              ),
+            ),
+          );
+        }
+
         _loadData();
       } catch (e) {
         _showError(e.toString());

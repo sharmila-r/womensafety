@@ -13,6 +13,7 @@ import 'fake_call_screen.dart';
 import 'escort_tracking_screen.dart';
 import 'chat_list_screen.dart';
 import 'volunteer/volunteer_dashboard_screen.dart';
+import 'nearby_volunteers_screen.dart';
 import '../services/evidence_recording_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -34,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen>
   Volunteer? _volunteer;
   bool _isCheckingVolunteer = true;
   int _unreadMessages = 0;
+  bool? _showVolunteerView; // null = not set yet, defaults to true for volunteers
 
   @override
   void initState() {
@@ -66,6 +68,10 @@ class _HomeScreenState extends State<HomeScreen>
         setState(() {
           _volunteer = volunteer;
           _isCheckingVolunteer = false;
+          // Default to volunteer dashboard view if user is a volunteer
+          if (volunteer != null && _showVolunteerView == null) {
+            _showVolunteerView = true;
+          }
         });
       }
     } catch (e) {
@@ -83,6 +89,32 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    // If volunteer and showing volunteer view, display dashboard
+    if (_volunteer != null && _showVolunteerView == true) {
+      return WillPopScope(
+        onWillPop: () async {
+          setState(() => _showVolunteerView = false);
+          return false; // Don't pop, just switch view
+        },
+        child: Stack(
+          children: [
+            const VolunteerDashboardScreen(),
+            // Floating button to switch back to user view
+            Positioned(
+              bottom: 20,
+              right: 20,
+              child: FloatingActionButton.extended(
+                onPressed: () => setState(() => _showVolunteerView = false),
+                backgroundColor: const Color(0xFFE91E63),
+                icon: const Icon(Icons.home),
+                label: const Text('User View'),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -181,23 +213,16 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
                               ],
                             ),
-                            // Volunteer Dashboard Button
+                            // Volunteer Dashboard Toggle Button
                             if (_volunteer != null)
                               IconButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const VolunteerDashboardScreen(),
-                                    ),
-                                  );
-                                },
+                                onPressed: () => setState(() => _showVolunteerView = true),
                                 icon: const Icon(
                                   Icons.volunteer_activism,
                                   color: Colors.white,
                                   size: 24,
                                 ),
-                                tooltip: 'Volunteer Dashboard',
+                                tooltip: 'Switch to Volunteer View',
                               ),
                             IconButton(
                               onPressed: () {
@@ -221,14 +246,7 @@ class _HomeScreenState extends State<HomeScreen>
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const VolunteerDashboardScreen(),
-                            ),
-                          );
-                        },
+                        onTap: () => setState(() => _showVolunteerView = true),
                         child: Card(
                           color: _volunteer!.verificationLevel == VerificationLevel.backgroundChecked
                               ? Colors.green.shade50
@@ -253,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         style: const TextStyle(fontWeight: FontWeight.bold),
                                       ),
                                       Text(
-                                        'Status: ${_volunteer!.verificationLevel.name.toUpperCase()}',
+                                        'Tap to open Volunteer Dashboard',
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: _volunteer!.verificationLevel == VerificationLevel.backgroundChecked
@@ -264,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     ],
                                   ),
                                 ),
-                                const Icon(Icons.arrow_forward_ios, size: 16),
+                                const Icon(Icons.toggle_on, size: 24, color: Color(0xFFE91E63)),
                               ],
                             ),
                           ),
@@ -458,6 +476,43 @@ class _HomeScreenState extends State<HomeScreen>
                           icon: Icons.phone_callback,
                           label: 'Fake\nCall',
                           onTap: () => _showFakeCallScheduler(context),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Quick Actions - Row 3 (Nearby Volunteers, Recordings)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildQuickAction(
+                          icon: Icons.people,
+                          label: 'Nearby\nVolunteers',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NearbyVolunteersScreen(),
+                            ),
+                          ),
+                        ),
+                        _buildQuickAction(
+                          icon: Icons.folder,
+                          label: 'My\nRecordings',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RecordingsScreen(),
+                            ),
+                          ),
+                        ),
+                        _buildQuickAction(
+                          icon: Icons.map,
+                          label: 'Safety\nMap',
+                          onTap: () => _showComingSoon(context, 'Safety Map'),
                         ),
                       ],
                     ),
@@ -721,6 +776,16 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  /// Show coming soon dialog
+  void _showComingSoon(BuildContext context, String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature coming soon!'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   /// Start safe journey with destination input
   void _startSafeJourney(BuildContext context) {
     final destinationController = TextEditingController();
@@ -802,4 +867,5 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
   }
+
 }

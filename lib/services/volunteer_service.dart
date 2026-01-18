@@ -7,6 +7,7 @@ import '../models/volunteer.dart';
 import '../models/escort_request.dart';
 import 'firebase_service.dart';
 import 'push_notification_service.dart';
+import 'remote_config_service.dart';
 
 /// Service for volunteer operations
 class VolunteerService {
@@ -170,6 +171,9 @@ class VolunteerService {
       }
     }
 
+    // Get service radius based on country from Remote Config
+    final serviceRadius = RemoteConfigService.instance.getIdVerifiedRadius(volunteer.country);
+
     // Update verification status
     await _volunteersRef.doc(volunteer.id).update({
       'verificationLevel': VerificationLevel.idVerified.name,
@@ -178,6 +182,7 @@ class VolunteerService {
       'faceMatchScore': faceMatchScore,
       'livenessPasssed': livenessPasssed,
       'kycCompletedAt': FieldValue.serverTimestamp(),
+      'serviceRadiusKm': serviceRadius,
       'updatedAt': FieldValue.serverTimestamp(),
       if (diditSessionId != null) 'diditSessionId': diditSessionId,
       if (diditSessionId != null) 'kycProvider': 'didit',
@@ -232,6 +237,12 @@ class VolunteerService {
 
     if (status == 'cleared') {
       updates['verificationLevel'] = VerificationLevel.backgroundChecked.name;
+      updates['bgvCompletedAt'] = FieldValue.serverTimestamp();
+
+      // Get volunteer's country to set proper service radius
+      final doc = await _volunteersRef.doc(volunteerId).get();
+      final country = doc.data()?['country'] ?? 'US';
+      updates['serviceRadiusKm'] = RemoteConfigService.instance.getBgvVerifiedRadius(country);
     }
 
     await _volunteersRef.doc(volunteerId).update(updates);
@@ -307,9 +318,7 @@ class VolunteerService {
         .get();
 
     final requests = snapshot.docs.map((doc) {
-      final data = doc.data();
-      data['id'] = doc.id;
-      return EscortRequest.fromJson(data);
+      return EscortRequest.fromFirestore(doc);
     }).toList();
 
     // Filter by distance (client-side for now)
@@ -390,9 +399,7 @@ class VolunteerService {
         .where('status', whereIn: ['confirmed', 'in_progress'])
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) {
-              final data = doc.data();
-              data['id'] = doc.id;
-              return EscortRequest.fromJson(data);
+              return EscortRequest.fromFirestore(doc);
             }).toList());
   }
 
@@ -454,16 +461,28 @@ class VolunteerService {
     required double latitude,
     required double longitude,
     double radiusKm = 10,
+    bool onlyAvailable = false,
   }) async {
-    // Get available volunteers
-    final snapshot = await _volunteersRef
-        .where('availabilityStatus', isEqualTo: AvailabilityStatus.available.name)
-        .where('isAcceptingRequests', isEqualTo: true)
+    // Get verified volunteers (at least ID verified)
+    Query query = _volunteersRef
         .where('verificationLevel', whereIn: [
+          VerificationLevel.idVerified.name,
           VerificationLevel.backgroundChecked.name,
           VerificationLevel.trusted.name,
-        ])
-        .get();
+        ]);
+
+    if (onlyAvailable) {
+      query = _volunteersRef
+          .where('availabilityStatus', isEqualTo: AvailabilityStatus.available.name)
+          .where('isAcceptingRequests', isEqualTo: true)
+          .where('verificationLevel', whereIn: [
+            VerificationLevel.idVerified.name,
+            VerificationLevel.backgroundChecked.name,
+            VerificationLevel.trusted.name,
+          ]);
+    }
+
+    final snapshot = await query.get();
 
     final volunteers = snapshot.docs
         .map((doc) => Volunteer.fromFirestore(doc))
@@ -480,7 +499,18 @@ class VolunteerService {
       );
       return distance <= radiusKm * 1000;
     }).toList()
-      ..sort((a, b) => b.averageRating.compareTo(a.averageRating));
+      ..sort((a, b) {
+        // Sort by availability first, then by rating
+        if (a.availabilityStatus == AvailabilityStatus.available &&
+            b.availabilityStatus != AvailabilityStatus.available) {
+          return -1;
+        }
+        if (b.availabilityStatus == AvailabilityStatus.available &&
+            a.availabilityStatus != AvailabilityStatus.available) {
+          return 1;
+        }
+        return b.averageRating.compareTo(a.averageRating);
+      });
   }
 
   // ==================== SOS VOLUNTEER ALERTS ====================

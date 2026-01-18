@@ -212,6 +212,7 @@ class EscortRequestService {
   Future<void> startEscort(String requestId) async {
     await _requestsRef.doc(requestId).update({
       'status': EscortRequestStatus.inProgress.name,
+      'startedAt': FieldValue.serverTimestamp(),
     });
 
     final request = await getRequest(requestId);
@@ -221,6 +222,26 @@ class EscortRequestService {
         content: 'Escort started',
       );
     }
+  }
+
+  /// Update volunteer's live location during escort
+  Future<void> updateVolunteerLocation({
+    required String requestId,
+    required double latitude,
+    required double longitude,
+  }) async {
+    await _requestsRef.doc(requestId).update({
+      'volunteerLocation': GeoPoint(latitude, longitude),
+      'volunteerLocationUpdatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Stream volunteer's live location
+  Stream<GeoPoint?> streamVolunteerLocation(String requestId) {
+    return _requestsRef.doc(requestId).snapshots().map((snapshot) {
+      final data = snapshot.data() as Map<String, dynamic>?;
+      return data?['volunteerLocation'] as GeoPoint?;
+    });
   }
 
   /// Complete the escort

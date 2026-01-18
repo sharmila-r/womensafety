@@ -4,6 +4,7 @@ import '../providers/app_provider.dart';
 import '../models/escort_request.dart';
 import '../services/escort_request_service.dart';
 import 'chat_screen.dart';
+import 'escort_status_screen.dart';
 
 class EscortScreen extends StatefulWidget {
   const EscortScreen({super.key});
@@ -289,7 +290,16 @@ class _EscortScreenState extends State<EscortScreen> {
         statusText = 'PENDING';
     }
 
-    return Card(
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EscortStatusScreen(requestId: request.id),
+          ),
+        );
+      },
+      child: Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -447,6 +457,7 @@ class _EscortScreenState extends State<EscortScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -486,7 +497,7 @@ class _EscortScreenState extends State<EscortScreen> {
         _selectedTime.minute,
       );
 
-      await _escortService.createRequest(
+      final request = await _escortService.createRequest(
         eventName: _eventNameController.text,
         eventLocation: _locationController.text,
         latitude: provider.currentPosition?.latitude ?? 0,
@@ -509,6 +520,14 @@ class _EscortScreenState extends State<EscortScreen> {
           const SnackBar(
             content: Text('Request submitted! Nearby volunteers notified.'),
             backgroundColor: Colors.green,
+          ),
+        );
+
+        // Navigate to status screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EscortStatusScreen(requestId: request.id),
           ),
         );
       }

@@ -127,9 +127,7 @@ class FirestoreService {
         .get();
 
     return snapshot.docs.map((doc) {
-      final data = doc.data();
-      data['id'] = doc.id;
-      return EscortRequest.fromJson(data);
+      return EscortRequest.fromFirestore(doc);
     }).toList();
   }
 
@@ -163,9 +161,7 @@ class FirestoreService {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) {
-              final data = doc.data();
-              data['id'] = doc.id;
-              return EscortRequest.fromJson(data);
+              return EscortRequest.fromFirestore(doc);
             }).toList());
   }
 
