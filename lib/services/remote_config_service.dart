@@ -57,6 +57,9 @@ class RemoteConfigService {
     // Surepass
     'surepass_api_key': DevKeys.surepassApiKey,
 
+    // Google Maps
+    'google_maps_api_key': DevKeys.googleMapsApiKey,
+
     // Feature flags
     'kyc_provider': 'didit', // 'didit', 'idfy', 'manual'
     'enable_bgv': true,
@@ -115,6 +118,10 @@ class RemoteConfigService {
 
   String get surepassApiKey => _getString('surepass_api_key', DevKeys.surepassApiKey);
   bool get isSurepassConfigured => surepassApiKey.isNotEmpty;
+
+  // ==================== GOOGLE MAPS CONFIG ====================
+
+  String get googleMapsApiKey => _getString('google_maps_api_key', DevKeys.googleMapsApiKey);
 
   // ==================== FEATURE FLAGS ====================
 

@@ -36,6 +36,12 @@
       },
       "description": "Surepass API Key for Voter ID verification (backup)"
     },
+    "google_maps_api_key": {
+      "defaultValue": {
+        "value": "AIzaSyAWYXHk8Q1lUZEhrIJIgvR-rOh38n_9tpI"
+      },
+      "description": "Google Maps API Key for Directions API and Geocoding"
+    },
     "kyc_provider": {
       "defaultValue": {
         "value": "didit"

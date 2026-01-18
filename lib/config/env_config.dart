@@ -123,6 +123,10 @@ class EnvConfig {
       String.fromEnvironment('GOOGLE_MAPS_API_KEY');
   static String get googleMapsApiKey {
     if (_googleMapsApiKeyEnv.isNotEmpty) return _googleMapsApiKeyEnv;
+    if (_remoteConfig.isInitialized) {
+      final remoteValue = _remoteConfig.googleMapsApiKey;
+      if (remoteValue.isNotEmpty) return remoteValue;
+    }
     return DevKeys.googleMapsApiKey;
   }
 
