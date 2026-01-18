@@ -1,17 +1,30 @@
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'firebase_service.dart';
 
 /// Authentication service for phone OTP and email authentication
 class AuthService {
   final FirebaseService _firebase = FirebaseService.instance;
 
+  // Method channel to check APNs status on iOS
+  static const _apnsChannel = MethodChannel('com.forwardalpha.womenSafety/apns');
+
   // Verification state
   String? _verificationId;
   int? _resendToken;
 
-  /// Get current user
-  User? get currentUser => _firebase.auth.currentUser;
+  /// Get current user (safely handles Firebase not initialized)
+  User? get currentUser {
+    if (!_firebase.isInitialized) return null;
+    try {
+      return _firebase.auth.currentUser;
+    } catch (e) {
+      print('❌ Error getting currentUser: $e');
+      return null;
+    }
+  }
 
   /// Check if user is logged in
   bool get isLoggedIn => currentUser != null;
@@ -20,7 +33,36 @@ class AuthService {
   String? get userId => currentUser?.uid;
 
   /// Auth state changes stream
-  Stream<User?> get authStateChanges => _firebase.auth.authStateChanges();
+  Stream<User?> get authStateChanges {
+    if (!_firebase.isInitialized) return Stream.value(null);
+    try {
+      return _firebase.auth.authStateChanges();
+    } catch (e) {
+      print('❌ Error getting authStateChanges: $e');
+      return Stream.value(null);
+    }
+  }
+
+  /// Wait for APNs token to be ready (iOS only)
+  Future<bool> _waitForAPNS() async {
+    if (!Platform.isIOS) return true;
+
+    print('📱 Waiting for APNs token...');
+    for (int i = 0; i < 10; i++) {
+      try {
+        final isReady = await _apnsChannel.invokeMethod<bool>('isAPNSReady');
+        if (isReady == true) {
+          print('✅ APNs token is ready');
+          return true;
+        }
+      } catch (e) {
+        print('📱 APNs check error: $e');
+      }
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+    print('⚠️ APNs token not ready after 5 seconds');
+    return false;
+  }
 
   /// Send OTP to phone number
   Future<void> sendOTP({
@@ -35,6 +77,15 @@ class AuthService {
     print('📱 Firebase app: ${_firebase.auth.app.name}');
 
     try {
+      // On iOS, wait for APNs token before attempting phone auth
+      if (Platform.isIOS) {
+        final apnsReady = await _waitForAPNS();
+        if (!apnsReady) {
+          print('⚠️ APNs not ready, phone auth may fail');
+          // Continue anyway - Firebase might use reCAPTCHA fallback
+        }
+      }
+
       print('📱 Calling verifyPhoneNumber...');
       await _firebase.auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,

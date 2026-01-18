@@ -166,23 +166,42 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAppState() async {
-    await Future.delayed(const Duration(milliseconds: 500)); // Brief splash
+    try {
+      print('🚀 SplashScreen: Starting _checkAppState');
+      await Future.delayed(const Duration(milliseconds: 500)); // Brief splash
 
-    final prefs = await SharedPreferences.getInstance();
-    final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
+      print('🚀 SplashScreen: Getting SharedPreferences');
+      final prefs = await SharedPreferences.getInstance();
+      final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
+      print('🚀 SplashScreen: onboardingComplete = $onboardingComplete');
 
-    if (!mounted) return;
+      if (!mounted) {
+        print('🚀 SplashScreen: Widget not mounted, returning');
+        return;
+      }
 
-    if (!onboardingComplete) {
-      // First time user - show onboarding
-      Navigator.pushReplacementNamed(context, '/onboarding');
-    } else if (!_authService.isLoggedIn) {
-      // Onboarding done but not logged in - show login
-      Navigator.pushReplacementNamed(context, '/login');
-    } else {
-      // Logged in - save FCM token and go to home
-      await PushNotificationService().saveTokenAfterLogin();
-      Navigator.pushReplacementNamed(context, '/home');
+      if (!onboardingComplete) {
+        // First time user - show onboarding
+        print('🚀 SplashScreen: Navigating to onboarding');
+        Navigator.pushReplacementNamed(context, '/onboarding');
+      } else if (!_authService.isLoggedIn) {
+        // Onboarding done but not logged in - show login
+        print('🚀 SplashScreen: Navigating to login');
+        Navigator.pushReplacementNamed(context, '/login');
+      } else {
+        // Logged in - save FCM token and go to home
+        print('🚀 SplashScreen: Saving FCM token');
+        await PushNotificationService().saveTokenAfterLogin();
+        print('🚀 SplashScreen: Navigating to home');
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    } catch (e, stack) {
+      print('❌ SplashScreen error: $e');
+      print('❌ Stack: $stack');
+      // Navigate to onboarding on error
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/onboarding');
+      }
     }
   }
 

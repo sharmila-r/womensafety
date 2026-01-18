@@ -361,12 +361,20 @@ class PushNotificationService {
 
   /// Save FCM token after user login (call this after successful login)
   Future<void> saveTokenAfterLogin() async {
-    if (_fcmToken != null) {
-      await _saveTokenToFirestore(_fcmToken!);
-      debugPrint('FCM token saved after login');
-    } else {
-      // Get token if we don't have one yet
-      await _getAndSaveToken();
+    try {
+      if (!FirebaseService.instance.isInitialized) {
+        debugPrint('Firebase not initialized, skipping token save');
+        return;
+      }
+      if (_fcmToken != null) {
+        await _saveTokenToFirestore(_fcmToken!);
+        debugPrint('FCM token saved after login');
+      } else {
+        // Get token if we don't have one yet
+        await _getAndSaveToken();
+      }
+    } catch (e) {
+      debugPrint('Error saving FCM token after login: $e');
     }
   }
 

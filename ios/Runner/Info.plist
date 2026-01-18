@@ -93,12 +93,25 @@
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>Kaavala uses Bluetooth to connect with your SOS panic button for emergency alerts.</string>
 
-	<!-- Firebase Messaging -->
+	<!-- Firebase Messaging - Enable swizzling for automatic APNs token handling -->
 	<key>FirebaseAppDelegateProxyEnabled</key>
-	<false/>
+	<true/>
 
 	<!-- Google Maps API Key (loaded from Secrets.xcconfig) -->
 	<key>GMSApiKey</key>
 	<string>$(GOOGLE_MAPS_API_KEY)</string>
+
+	<!-- URL Schemes for Firebase Auth reCAPTCHA -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.519631065567-28e9sv71rvdflpmgn8f0auanm8qn69fu</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
