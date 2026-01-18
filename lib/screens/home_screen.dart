@@ -14,6 +14,7 @@ import 'escort_tracking_screen.dart';
 import 'chat_list_screen.dart';
 import 'volunteer/volunteer_dashboard_screen.dart';
 import 'nearby_volunteers_screen.dart';
+import 'sos_active_screen.dart';
 import '../services/evidence_recording_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -415,13 +416,33 @@ class _HomeScreenState extends State<HomeScreen>
                   if (provider.isSOSActive)
                     Padding(
                       padding: const EdgeInsets.only(top: 20),
-                      child: ElevatedButton(
-                        onPressed: () => provider.deactivateSOS(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.red,
-                        ),
-                        child: const Text('Deactivate SOS'),
+                      child: Column(
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const SOSActiveScreen(),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFFE91E63),
+                            ),
+                            icon: const Icon(Icons.people),
+                            label: const Text('View Responding Volunteers'),
+                          ),
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: () => provider.deactivateSOS(),
+                            child: const Text(
+                              'Deactivate SOS',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
@@ -684,9 +705,9 @@ class _HomeScreenState extends State<HomeScreen>
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              provider.triggerSOS();
+              await provider.triggerSOS();
 
               // Show appropriate confirmation message
               String confirmMsg;
@@ -698,12 +719,24 @@ class _HomeScreenState extends State<HomeScreen>
                 confirmMsg = 'SOS Alert sent to nearby volunteers!';
               }
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(confirmMsg),
-                  backgroundColor: Colors.red,
-                ),
-              );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(confirmMsg),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+
+                // Open SOS status screen if alerting volunteers
+                if (alertVolunteers) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SOSActiveScreen(),
+                    ),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Send SOS'),
