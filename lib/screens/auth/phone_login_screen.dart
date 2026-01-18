@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/auth_service.dart';
+import '../../services/push_notification_service.dart';
 
 /// Phone OTP login screen
 class PhoneLoginScreen extends StatefulWidget {
@@ -121,6 +122,8 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
       );
 
       if (credential != null && mounted) {
+        // Save FCM token after successful login
+        await PushNotificationService().saveTokenAfterLogin();
         // Navigate to home after successful login
         Navigator.pushReplacementNamed(context, '/home');
       }
@@ -136,6 +139,8 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
     try {
       await FirebaseAuth.instance.signInWithCredential(credential);
       if (mounted) {
+        // Save FCM token after successful login
+        await PushNotificationService().saveTokenAfterLogin();
         // Navigate to home after successful login
         Navigator.pushReplacementNamed(context, '/home');
       }

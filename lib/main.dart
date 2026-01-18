@@ -157,7 +157,8 @@ class _SplashScreenState extends State<SplashScreen> {
       // Onboarding done but not logged in - show login
       Navigator.pushReplacementNamed(context, '/login');
     } else {
-      // Logged in - go to home
+      // Logged in - save FCM token and go to home
+      await PushNotificationService().saveTokenAfterLogin();
       Navigator.pushReplacementNamed(context, '/home');
     }
   }

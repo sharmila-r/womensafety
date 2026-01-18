@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' show Color;
+import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -315,6 +316,17 @@ class PushNotificationService {
 
   /// Get current FCM token
   String? get fcmToken => _fcmToken;
+
+  /// Save FCM token after user login (call this after successful login)
+  Future<void> saveTokenAfterLogin() async {
+    if (_fcmToken != null) {
+      await _saveTokenToFirestore(_fcmToken!);
+      debugPrint('FCM token saved after login');
+    } else {
+      // Get token if we don't have one yet
+      await _getAndSaveToken();
+    }
+  }
 
   // ==================== SOS ALERT METHODS ====================
 
