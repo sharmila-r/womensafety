@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+  final bool isFromSettings;
+
+  const OnboardingScreen({super.key, this.isFromSettings = false});
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -16,7 +18,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     OnboardingPage(
       title: 'Welcome to Kaavala',
       description: 'Your personal safety companion. We\'re here to help you feel safe, wherever you go.',
-      icon: Icons.shield,
+      imagePath: 'assets/images/app_icon.png',
       color: const Color(0xFFE91E63),
     ),
     OnboardingPage(
@@ -55,8 +57,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_complete', true);
     if (mounted) {
-      // Go to login after onboarding
-      Navigator.pushReplacementNamed(context, '/login');
+      if (widget.isFromSettings) {
+        // Go back to settings
+        Navigator.pop(context);
+      } else {
+        // Go to login after onboarding
+        Navigator.pushReplacementNamed(context, '/login');
+      }
     }
   }
 
@@ -215,10 +222,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ],
             ),
-            child: Icon(
-              page.icon,
-              size: 80,
-              color: page.color,
+            child: Center(
+              child: page.imagePath != null
+                  ? Image.asset(
+                      page.imagePath!,
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        debugPrint('Error loading image: $error');
+                        return Icon(
+                          Icons.shield,
+                          size: 80,
+                          color: page.color,
+                        );
+                      },
+                    )
+                  : Icon(
+                      page.icon,
+                      size: 80,
+                      color: page.color,
+                    ),
             ),
           ),
           const SizedBox(height: 48),
@@ -254,13 +278,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 class OnboardingPage {
   final String title;
   final String description;
-  final IconData icon;
+  final IconData? icon;
+  final String? imagePath;
   final Color color;
 
   OnboardingPage({
     required this.title,
     required this.description,
-    required this.icon,
+    this.icon,
+    this.imagePath,
     required this.color,
   });
 }

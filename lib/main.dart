@@ -216,17 +216,17 @@ class _SplashScreenState extends State<SplashScreen> {
             colors: [Color(0xFFE91E63), Color(0xFFFCE4EC)],
           ),
         ),
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.shield,
-                size: 80,
-                color: Colors.white,
+              Image.asset(
+                'assets/images/app_icon.png',
+                width: 120,
+                height: 120,
               ),
-              SizedBox(height: 16),
-              Text(
+              const SizedBox(height: 16),
+              const Text(
                 'Kaavala',
                 style: TextStyle(
                   fontSize: 36,
@@ -234,8 +234,8 @@ class _SplashScreenState extends State<SplashScreen> {
                   color: Colors.white,
                 ),
               ),
-              SizedBox(height: 8),
-              Text(
+              const SizedBox(height: 8),
+              const Text(
                 'Your Safety, Our Priority',
                 style: TextStyle(
                   fontSize: 16,

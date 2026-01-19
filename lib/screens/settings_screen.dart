@@ -7,6 +7,7 @@ import '../config/countries/base_country.dart';
 import '../l10n/app_localizations.dart';
 import '../services/auth_service.dart';
 import 'ble_button_screen.dart';
+import 'onboarding_screen.dart';
 import 'volunteer/volunteer_registration_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -596,6 +597,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Card(
                 child: Column(
                   children: [
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE91E63).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.play_circle_outline,
+                          color: Color(0xFFE91E63),
+                        ),
+                      ),
+                      title: const Text('App Walkthrough'),
+                      subtitle: const Text('View the onboarding guide again'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const OnboardingScreen(isFromSettings: true),
+                          ),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
                     const ListTile(
                       leading: Icon(Icons.info_outline),
                       title: Text('Version'),
@@ -625,16 +651,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Center(
                 child: Column(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE91E63).withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.shield,
-                        size: 40,
-                        color: Color(0xFFE91E63),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.asset(
+                        'assets/images/app_icon.png',
+                        width: 72,
+                        height: 72,
                       ),
                     ),
                     const SizedBox(height: 12),
