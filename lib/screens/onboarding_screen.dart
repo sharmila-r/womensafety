@@ -211,23 +211,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Container(
             width: 160,
             height: 160,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: page.color.withOpacity(0.3),
-                  blurRadius: 30,
-                  spreadRadius: 10,
-                ),
-              ],
-            ),
+            decoration: page.imagePath == null
+                ? BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: page.color.withOpacity(0.3),
+                        blurRadius: 30,
+                        spreadRadius: 10,
+                      ),
+                    ],
+                  )
+                : null,
             child: Center(
               child: page.imagePath != null
                   ? Image.asset(
                       page.imagePath!,
-                      width: 120,
-                      height: 120,
+                      width: 160,
+                      height: 160,
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) {
                         debugPrint('Error loading image: $error');
