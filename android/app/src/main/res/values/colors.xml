@@ -6,6 +6,6 @@
     <!-- Notification color -->
     <color name="notification_color">#E91E63</color>
 
-    <!-- Launcher icon background -->
-    <color name="ic_launcher_background">#1565C0</color>
+    <!-- Launcher icon background (matches icon's orange) -->
+    <color name="ic_launcher_background">#F5A623</color>
 </resources>
