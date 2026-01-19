@@ -8,5 +8,13 @@
   },
   "remoteconfig": {
     "template": "firebase_remote_config.json"
+  },
+  "hosting": {
+    "public": "website",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
   }
 }
