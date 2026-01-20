@@ -457,7 +457,24 @@ class _HomeScreenState extends State<HomeScreen>
                         _buildQuickAction(
                           icon: Icons.share_location,
                           label: 'Share\nLocation',
-                          onTap: () => provider.shareCurrentLocation(),
+                          onTap: () {
+                            if (provider.trustedContacts.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Please add trusted contacts first'),
+                                  action: SnackBarAction(
+                                    label: 'Add',
+                                    onPressed: () => Navigator.pushNamed(context, '/contacts'),
+                                  ),
+                                ),
+                              );
+                            } else {
+                              provider.shareCurrentLocation();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Location shared with trusted contacts')),
+                              );
+                            }
+                          },
                           isActive: provider.isLocationSharing,
                         ),
                         _buildQuickAction(

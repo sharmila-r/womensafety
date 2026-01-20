@@ -61,6 +61,13 @@
 		<string>remote-notification</string>
 	</array>
 
+	<!-- Background Task Scheduler (required for processing mode) -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.forwardalpha.womenSafety.refresh</string>
+		<string>com.forwardalpha.womenSafety.processing</string>
+	</array>
+
 	<!-- Camera Permission -->
 	<key>NSCameraUsageDescription</key>
 	<string>Kaavala needs camera access to capture photo evidence when reporting harassment incidents.</string>
