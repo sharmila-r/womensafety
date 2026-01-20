@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kaavala - Your Safety, Our Priority</title>
-    <meta name="description" content="Kaavala is a women's safety app with SOS alerts, live location sharing, volunteer escort services, and harassment reporting.">
-    <meta name="keywords" content="women safety app, SOS app, emergency alert, location sharing, escort service, harassment reporting">
+    <meta name="description" content="Kaavala is a women's safety app with SOS alerts, live location sharing, volunteer escort services, and TVK Kavalan crowd safety coordination for rallies and events.">
+    <meta name="keywords" content="women safety app, SOS app, emergency alert, location sharing, escort service, TVK Kavalan, rally safety, crowd management, maanadu">
 
     <!-- Open Graph -->
     <meta property="og:title" content="Kaavala - Women's Safety App">
@@ -29,6 +29,9 @@
             --bg-light: #FCE4EC;
             --text-dark: #333;
             --text-light: #666;
+            --teal: #00796B;
+            --teal-dark: #004D40;
+            --teal-light: #E0F2F1;
         }
 
         body {
@@ -314,6 +317,111 @@
             font-size: 0.95rem;
         }
 
+        /* TVK Kaavala Section */
+        .tvk-kaavala {
+            padding: 100px 20px;
+            background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%);
+        }
+
+        .tvk-kaavala .section-header h2 {
+            color: white;
+        }
+
+        .tvk-kaavala .section-header p {
+            color: rgba(255,255,255,0.9);
+        }
+
+        .tvk-content-grid {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 50px;
+            margin-top: 50px;
+            align-items: start;
+        }
+
+        .tvk-mockup {
+            display: flex;
+            justify-content: center;
+        }
+
+        .tvk-mockup img {
+            width: 260px;
+            height: auto;
+            border-radius: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+
+        .tvk-features-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .tvk-content-grid {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .tvk-mockup img {
+                width: 220px;
+            }
+
+            .tvk-features-list {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .tvk-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-top: 50px;
+        }
+
+        .tvk-feature {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .tvk-feature-icon {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 1.5rem;
+        }
+
+        .tvk-feature h3 {
+            color: white;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+
+        .tvk-feature p {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.9rem;
+        }
+
+        .tvk-badge {
+            display: inline-block;
+            background: white;
+            color: var(--teal);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
         /* How It Works */
         .how-it-works {
             padding: 100px 20px;
@@ -508,6 +616,7 @@
             </a>
             <ul class="nav-links">
                 <li><a href="#features">Features</a></li>
+                <li><a href="#tvk-kaavala">TVK Kaavala</a></li>
                 <li><a href="#how-it-works">How It Works</a></li>
                 <li><a href="#download">Download</a></li>
                 <li><a href="privacy-policy.html">Privacy</a></li>
@@ -521,7 +630,7 @@
             <div class="hero-content">
                 <h1>Your Safety, Our Priority</h1>
                 <p class="tagline">Kaavala - Women's Safety App</p>
-                <p>Instant SOS alerts, live location sharing, verified volunteer escorts, and harassment reporting - all in one app. Because your safety matters.</p>
+                <p>Instant SOS alerts, live location sharing, verified volunteer escorts, and TVK Kavalan crowd safety for rallies - all in one app. Because your safety matters.</p>
                 <div class="download-buttons">
                     <a href="https://play.google.com/store/apps/details?id=com.forwardalpha.womenSafety" class="download-btn coming-soon" target="_blank">
                         <span class="coming-soon-badge">Coming Soon</span>
@@ -596,6 +705,44 @@
         </div>
     </section>
 
+    <!-- TVK Kaavala Section -->
+    <section class="tvk-kaavala" id="tvk-kaavala">
+        <div class="section-container">
+            <div class="section-header">
+                <span class="tvk-badge">TVK Kaavala</span>
+                <h2>Crowd Safety for Rallies & Events</h2>
+                <p>For TVK volunteers: Real-time coordination and crowd safety management during rallies, maanadu, and public gatherings</p>
+            </div>
+            <div class="tvk-content-grid">
+                <div class="tvk-mockup">
+                    <img src="tvk-kaavala-mockup.png" alt="TVK Kaavala App Screenshot" />
+                </div>
+                <div class="tvk-features-list">
+                    <div class="tvk-feature">
+                        <div class="tvk-feature-icon">🗺️</div>
+                        <h3>Zone Monitoring</h3>
+                        <p>Live map with crowd density overlays. Track zone capacity in real-time.</p>
+                    </div>
+                    <div class="tvk-feature">
+                        <div class="tvk-feature-icon">🚨</div>
+                        <h3>Alert Management</h3>
+                        <p>Instant alerts for overcrowding, medical emergencies, and security incidents.</p>
+                    </div>
+                    <div class="tvk-feature">
+                        <div class="tvk-feature-icon">👥</div>
+                        <h3>Team Coordination</h3>
+                        <p>Manage volunteers by role - coordinators, zone captains, medical, security teams.</p>
+                    </div>
+                    <div class="tvk-feature">
+                        <div class="tvk-feature-icon">📢</div>
+                        <h3>Broadcasts</h3>
+                        <p>Send announcements to all volunteers or specific teams instantly.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- How It Works -->
     <section class="how-it-works" id="how-it-works">
         <div class="section-container">
@@ -657,12 +804,13 @@
         <div class="footer-container">
             <div class="footer-section">
                 <h4>Kaavala</h4>
-                <p>Your safety, our priority. A comprehensive women's safety app with SOS alerts, location sharing, and volunteer escort services.</p>
+                <p>Your safety, our priority. Women's safety app with SOS alerts, volunteer escort, and TVK Kavalan crowd safety for rallies and events.</p>
             </div>
             <div class="footer-section">
                 <h4>Quick Links</h4>
                 <ul>
                     <li><a href="#features">Features</a></li>
+                    <li><a href="#tvk-kaavala">TVK Kaavala</a></li>
                     <li><a href="#how-it-works">How It Works</a></li>
                     <li><a href="#download">Download</a></li>
                 </ul>
