@@ -5,7 +5,9 @@ import '../services/sms_service.dart';
 import '../services/auth_service.dart';
 import '../services/volunteer_service.dart';
 import '../services/chat_service.dart';
+import '../services/tvk_event_service.dart';
 import '../models/volunteer.dart';
+import '../models/tvk/tvk_event.dart';
 import 'tracking_screen.dart';
 import 'recording_screen.dart';
 import 'recordings_screen.dart';
@@ -32,8 +34,10 @@ class _HomeScreenState extends State<HomeScreen>
   final AuthService _authService = AuthService();
   final VolunteerService _volunteerService = VolunteerService();
   final ChatService _chatService = ChatService();
+  final TVKEventService _tvkEventService = TVKEventService();
 
   Volunteer? _volunteer;
+  TVKEvent? _tvkActiveEvent;
   bool _isCheckingVolunteer = true;
   int _unreadMessages = 0;
   bool? _showVolunteerView; // null = not set yet, defaults to true for volunteers
@@ -51,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
 
     _checkVolunteerStatus();
+    _checkTVKEvent();
     _listenToUnreadMessages();
   }
 
@@ -79,6 +84,17 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted) {
         setState(() => _isCheckingVolunteer = false);
       }
+    }
+  }
+
+  Future<void> _checkTVKEvent() async {
+    try {
+      final event = await _tvkEventService.getActiveEvent();
+      if (mounted) {
+        setState(() => _tvkActiveEvent = event);
+      }
+    } catch (e) {
+      debugPrint('Error checking TVK event: $e');
     }
   }
 
@@ -291,6 +307,12 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                   if (_volunteer != null) const SizedBox(height: 8),
+
+                  // TVK Event Card (if active event exists)
+                  if (_tvkActiveEvent != null && _volunteer != null)
+                    _buildTVKEventCard(),
+                  if (_tvkActiveEvent != null && _volunteer != null)
+                    const SizedBox(height: 8),
 
                   // Location Card
                   Padding(
@@ -856,6 +878,92 @@ class _HomeScreenState extends State<HomeScreen>
         content: Text('$feature coming soon!'),
         duration: const Duration(seconds: 2),
       ),
+    );
+  }
+
+  /// Build TVK Event card for volunteer dashboard access
+  Widget _buildTVKEventCard() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: GestureDetector(
+        onTap: () => _openTVKDashboard(),
+        child: Card(
+          color: const Color(0xFFE0F2F1), // Teal background
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00796B),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.shield,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'TVK Kavalan',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF00796B),
+                        ),
+                      ),
+                      Text(
+                        _tvkActiveEvent!.name,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF004D40),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4CAF50),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'LIVE',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF00796B)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Open TVK Kavalan Dashboard
+  void _openTVKDashboard() {
+    if (_tvkActiveEvent == null || _volunteer == null) return;
+
+    Navigator.pushNamed(
+      context,
+      '/tvk-dashboard',
+      arguments: {
+        'eventId': _tvkActiveEvent!.id,
+        'odcId': _volunteer!.id,
+      },
     );
   }
 

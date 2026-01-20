@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/app_provider.dart';
+import 'providers/tvk_event_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/contacts_screen.dart';
 import 'screens/escort_screen.dart';
@@ -13,6 +14,7 @@ import 'screens/settings_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/auth/phone_login_screen.dart';
 import 'screens/volunteer/sos_response_screen.dart';
+import 'screens/tvk/tvk_dashboard_screen.dart';
 import 'services/firebase_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/remote_config_service.dart';
@@ -63,8 +65,11 @@ class WomenSafetyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AppProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppProvider()),
+        ChangeNotifierProvider(create: (_) => TVKEventProvider()),
+      ],
       child: Consumer<AppProvider>(
         builder: (context, provider, _) {
           return MaterialApp(
@@ -135,6 +140,18 @@ class WomenSafetyApp extends StatelessWidget {
                       longitude: double.tryParse(data['longitude']?.toString() ?? '0') ?? 0,
                       address: data['address'] ?? 'Unknown location',
                       message: data['message'],
+                    ),
+                  );
+                }
+              }
+              // TVK Kavalan Dashboard route
+              if (settings.name == '/tvk-dashboard') {
+                final data = settings.arguments as Map<String, dynamic>?;
+                if (data != null) {
+                  return MaterialPageRoute(
+                    builder: (context) => TVKDashboardScreen(
+                      eventId: data['eventId'] ?? '',
+                      odcId: data['odcId'] ?? '',
                     ),
                   );
                 }
