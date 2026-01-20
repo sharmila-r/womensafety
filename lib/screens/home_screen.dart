@@ -308,10 +308,10 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   if (_volunteer != null) const SizedBox(height: 8),
 
-                  // TVK Event Card (if active event exists)
-                  if (_tvkActiveEvent != null && _volunteer != null)
+                  // TVK Event Card (show for all volunteers - with demo mode if no active event)
+                  if (_volunteer != null)
                     _buildTVKEventCard(),
-                  if (_tvkActiveEvent != null && _volunteer != null)
+                  if (_volunteer != null)
                     const SizedBox(height: 8),
 
                   // Location Card
@@ -883,6 +883,9 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// Build TVK Event card for volunteer dashboard access
   Widget _buildTVKEventCard() {
+    final isDemo = _tvkActiveEvent == null;
+    final eventName = isDemo ? 'Demo Event Mode' : _tvkActiveEvent!.name;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: GestureDetector(
@@ -918,7 +921,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ),
                       Text(
-                        _tvkActiveEvent!.name,
+                        eventName,
                         style: const TextStyle(
                           fontSize: 12,
                           color: Color(0xFF004D40),
@@ -931,12 +934,12 @@ class _HomeScreenState extends State<HomeScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF4CAF50),
+                    color: isDemo ? const Color(0xFFFF9800) : const Color(0xFF4CAF50),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text(
-                    'LIVE',
-                    style: TextStyle(
+                  child: Text(
+                    isDemo ? 'DEMO' : 'LIVE',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
@@ -955,13 +958,16 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// Open TVK Kavalan Dashboard
   void _openTVKDashboard() {
-    if (_tvkActiveEvent == null || _volunteer == null) return;
+    if (_volunteer == null) return;
+
+    // Use demo event ID if no active event
+    final eventId = _tvkActiveEvent?.id ?? 'demo_event';
 
     Navigator.pushNamed(
       context,
       '/tvk-dashboard',
       arguments: {
-        'eventId': _tvkActiveEvent!.id,
+        'eventId': eventId,
         'odcId': _volunteer!.id,
       },
     );

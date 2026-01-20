@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/tvk/tvk_event.dart';
 import '../models/tvk/tvk_zone.dart';
 import '../models/tvk/tvk_alert.dart';
@@ -70,6 +71,12 @@ class TVKEventProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Check if this is demo mode
+      if (eventId == 'demo_event') {
+        _initializeDemoMode(odcId);
+        return;
+      }
+
       // Load event
       _event = await _service.getEvent(eventId);
       if (_event == null) {
@@ -92,6 +99,266 @@ class TVKEventProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Initialize with demo/mock data for testing
+  void _initializeDemoMode(String odcId) {
+    // Create demo event
+    _event = TVKEvent(
+      id: 'demo_event',
+      name: 'TVK Chennai Rally - Demo',
+      description: 'Demo event for testing TVK Kavalan dashboard',
+      location: TVKEventLocation(
+        venue: 'Marina Beach, Chennai',
+        address: 'Marina Beach Road, Chennai, Tamil Nadu',
+        latitude: 13.0524,
+        longitude: 80.2820,
+      ),
+      startTime: DateTime.now().subtract(const Duration(hours: 2)),
+      endTime: DateTime.now().add(const Duration(hours: 4)),
+      status: TVKEventStatus.active,
+      capacity: 50000,
+      settings: TVKEventSettings(),
+      createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      updatedAt: DateTime.now(),
+    );
+
+    // Create demo volunteer
+    _currentVolunteer = TVKEventVolunteer(
+      id: odcId,
+      eventId: 'demo_event',
+      odcId: odcId,
+      name: 'Demo Volunteer',
+      phone: '+91 98765 43210',
+      role: TVKVolunteerRole.general,
+      assignedZoneId: 'zone_a',
+      assignedZoneName: 'Zone A - Main Stage',
+      status: TVKVolunteerStatus.active,
+      checkInTime: DateTime.now().subtract(const Duration(hours: 1)),
+      latitude: 13.0524,
+      longitude: 80.2820,
+      lastLocationUpdate: DateTime.now(),
+    );
+
+    // Create demo zones
+    _zones = [
+      TVKZone(
+        id: 'zone_a',
+        eventId: 'demo_event',
+        name: 'Zone A - Main Stage',
+        type: TVKZoneType.stage,
+        capacity: 15000,
+        currentCount: 12500,
+        densityPercent: 83,
+        status: TVKZoneStatus.warning,
+        polygon: [
+          const LatLng(13.0530, 80.2810),
+          const LatLng(13.0530, 80.2830),
+          const LatLng(13.0518, 80.2830),
+          const LatLng(13.0518, 80.2810),
+        ],
+        center: const LatLng(13.0524, 80.2820),
+        assignedVolunteers: ['vol_003', 'vol_004'],
+        lastUpdated: DateTime.now(),
+      ),
+      TVKZone(
+        id: 'zone_b',
+        eventId: 'demo_event',
+        name: 'Zone B - Amenities',
+        type: TVKZoneType.amenity,
+        capacity: 5000,
+        currentCount: 2500,
+        densityPercent: 50,
+        status: TVKZoneStatus.safe,
+        polygon: [
+          const LatLng(13.0540, 80.2810),
+          const LatLng(13.0540, 80.2830),
+          const LatLng(13.0530, 80.2830),
+          const LatLng(13.0530, 80.2810),
+        ],
+        center: const LatLng(13.0535, 80.2820),
+        assignedVolunteers: ['vol_002'],
+        lastUpdated: DateTime.now(),
+      ),
+      TVKZone(
+        id: 'zone_c',
+        eventId: 'demo_event',
+        name: 'Zone C - Entry Gate',
+        type: TVKZoneType.entry,
+        capacity: 3000,
+        currentCount: 2800,
+        densityPercent: 93,
+        status: TVKZoneStatus.danger,
+        polygon: [
+          const LatLng(13.0510, 80.2810),
+          const LatLng(13.0510, 80.2830),
+          const LatLng(13.0500, 80.2830),
+          const LatLng(13.0500, 80.2810),
+        ],
+        center: const LatLng(13.0505, 80.2820),
+        assignedVolunteers: ['vol_001'],
+        lastUpdated: DateTime.now(),
+      ),
+    ];
+
+    // Create demo alerts
+    _alerts = [
+      TVKAlert(
+        id: 'alert_1',
+        eventId: 'demo_event',
+        type: TVKAlertType.overcrowding,
+        severity: TVKAlertSeverity.high,
+        title: 'Overcrowding at Entry Gate',
+        description: 'Heavy crowd at Zone C entry point. Immediate attention needed.',
+        location: TVKAlertLocation(
+          zoneId: 'zone_c',
+          zoneName: 'Zone C - Entry Gate',
+          latitude: 13.0505,
+          longitude: 80.2820,
+        ),
+        status: TVKAlertStatus.active,
+        createdBy: TVKAlertCreator(
+          odcId: 'vol_001',
+          name: 'Rajesh K',
+          role: 'zone_captain',
+        ),
+        assignedTo: [],
+        createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
+        updatedAt: DateTime.now().subtract(const Duration(minutes: 5)),
+      ),
+      TVKAlert(
+        id: 'alert_2',
+        eventId: 'demo_event',
+        type: TVKAlertType.medical,
+        severity: TVKAlertSeverity.medium,
+        title: 'Medical assistance needed',
+        description: 'Person feeling dizzy near amenities area.',
+        location: TVKAlertLocation(
+          zoneId: 'zone_b',
+          zoneName: 'Zone B - Amenities',
+          latitude: 13.0535,
+          longitude: 80.2820,
+        ),
+        status: TVKAlertStatus.acknowledged,
+        createdBy: TVKAlertCreator(
+          odcId: 'vol_002',
+          name: 'Priya S',
+          role: 'general',
+        ),
+        assignedTo: ['vol_003'],
+        createdAt: DateTime.now().subtract(const Duration(minutes: 15)),
+        updatedAt: DateTime.now().subtract(const Duration(minutes: 10)),
+      ),
+    ];
+
+    // Create demo volunteers
+    _volunteers = [
+      _currentVolunteer!,
+      TVKEventVolunteer(
+        id: 'vol_001',
+        eventId: 'demo_event',
+        odcId: 'vol_001',
+        name: 'Rajesh Kumar',
+        phone: '+91 98765 43211',
+        role: TVKVolunteerRole.zoneCaptain,
+        assignedZoneId: 'zone_c',
+        assignedZoneName: 'Zone C - Entry Gate',
+        status: TVKVolunteerStatus.active,
+        checkInTime: DateTime.now().subtract(const Duration(hours: 3)),
+        latitude: 13.0505,
+        longitude: 80.2820,
+        lastLocationUpdate: DateTime.now(),
+      ),
+      TVKEventVolunteer(
+        id: 'vol_002',
+        eventId: 'demo_event',
+        odcId: 'vol_002',
+        name: 'Priya Sharma',
+        phone: '+91 98765 43212',
+        role: TVKVolunteerRole.general,
+        assignedZoneId: 'zone_b',
+        assignedZoneName: 'Zone B - Amenities',
+        status: TVKVolunteerStatus.active,
+        checkInTime: DateTime.now().subtract(const Duration(hours: 2)),
+        latitude: 13.0535,
+        longitude: 80.2820,
+        lastLocationUpdate: DateTime.now(),
+      ),
+      TVKEventVolunteer(
+        id: 'vol_003',
+        eventId: 'demo_event',
+        odcId: 'vol_003',
+        name: 'Dr. Anand R',
+        phone: '+91 98765 43213',
+        role: TVKVolunteerRole.medical,
+        assignedZoneId: 'zone_a',
+        assignedZoneName: 'Zone A - Main Stage',
+        status: TVKVolunteerStatus.active,
+        checkInTime: DateTime.now().subtract(const Duration(hours: 2)),
+        latitude: 13.0524,
+        longitude: 80.2820,
+        lastLocationUpdate: DateTime.now(),
+      ),
+      TVKEventVolunteer(
+        id: 'vol_004',
+        eventId: 'demo_event',
+        odcId: 'vol_004',
+        name: 'Suresh M',
+        phone: '+91 98765 43214',
+        role: TVKVolunteerRole.security,
+        assignedZoneId: 'zone_a',
+        assignedZoneName: 'Zone A - Main Stage',
+        status: TVKVolunteerStatus.onBreak,
+        checkInTime: DateTime.now().subtract(const Duration(hours: 2)),
+        latitude: 13.0520,
+        longitude: 80.2815,
+        lastLocationUpdate: DateTime.now().subtract(const Duration(minutes: 10)),
+      ),
+    ];
+
+    // Create demo broadcasts
+    _broadcasts = [
+      TVKBroadcast(
+        id: 'broadcast_1',
+        eventId: 'demo_event',
+        type: TVKBroadcastType.announcement,
+        title: 'Water Break Reminder',
+        message: 'All volunteers please take a water break. Stay hydrated!',
+        audience: TVKBroadcastAudience(type: TVKAudienceType.all),
+        sentBy: TVKBroadcastSender(odcId: 'admin_001', name: 'Control Room'),
+        deliveredTo: 15,
+        readBy: ['vol_001', 'vol_002'],
+        createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
+      ),
+      TVKBroadcast(
+        id: 'broadcast_2',
+        eventId: 'demo_event',
+        type: TVKBroadcastType.emergency,
+        title: 'Zone C Alert',
+        message: 'All nearby volunteers report to Zone C immediately. Crowd control needed.',
+        audience: TVKBroadcastAudience(
+          type: TVKAudienceType.zone,
+          zones: ['zone_c', 'zone_b'],
+        ),
+        sentBy: TVKBroadcastSender(odcId: 'admin_001', name: 'Control Room'),
+        deliveredTo: 8,
+        readBy: ['vol_001'],
+        createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
+      ),
+    ];
+
+    // Create demo stats
+    _stats = TVKEventStats(
+      totalCrowd: 17800,
+      avgDensityPercent: 75.3,
+      totalVolunteers: 5,
+      activeVolunteers: 4,
+      activeAlerts: 2,
+      criticalAlerts: 1,
+    );
+
+    _isLoading = false;
+    notifyListeners();
   }
 
   /// Start real-time data subscriptions
