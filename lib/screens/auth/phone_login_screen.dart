@@ -20,6 +20,9 @@ class PhoneLoginScreen extends StatefulWidget {
   State<PhoneLoginScreen> createState() => _PhoneLoginScreenState();
 }
 
+// Test phone number for App Store review demo mode
+const String _demoPhoneNumber = '+919876543210';
+
 class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   final AuthService _authService = AuthService();
   final _phoneController = TextEditingController();
@@ -29,6 +32,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   bool _codeSent = false;
   String? _verificationId;
   String? _error;
+  bool _showDemoOption = false; // Show demo mode option on error with test number
 
   @override
   void initState() {
@@ -90,9 +94,12 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
         );
       },
       onError: (error) {
+        final phone = _formatPhoneNumber(_phoneController.text.trim());
         setState(() {
           _isLoading = false;
           _error = error;
+          // Show demo option if using test number and there's an error
+          _showDemoOption = (phone == _demoPhoneNumber);
         });
       },
       onAutoVerify: (credential) async {
@@ -128,9 +135,12 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
         Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
+      final phone = _formatPhoneNumber(_phoneController.text.trim());
       setState(() {
         _isLoading = false;
         _error = 'Invalid OTP. Please try again.';
+        // Show demo option if using test number
+        _showDemoOption = (phone == _demoPhoneNumber);
       });
     }
   }
@@ -150,6 +160,11 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
         _error = 'Sign in failed: $e';
       });
     }
+  }
+
+  /// Continue in demo mode (for App Store review when Firebase auth fails)
+  void _continueInDemoMode() {
+    Navigator.pushReplacementNamed(context, '/home');
   }
 
   @override
@@ -223,6 +238,44 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // Demo mode option for App Store review
+              if (_showDemoOption)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Network issues detected. You can continue in demo mode to preview the app.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.blue),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _continueInDemoMode,
+                          icon: const Icon(Icons.play_arrow),
+                          label: const Text('Continue in Demo Mode'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),

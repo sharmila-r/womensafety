@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
@@ -18,6 +19,7 @@ import 'volunteer/volunteer_dashboard_screen.dart';
 import 'nearby_volunteers_screen.dart';
 import 'sos_active_screen.dart';
 import '../services/evidence_recording_service.dart';
+import 'review_mode_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -42,6 +44,11 @@ class _HomeScreenState extends State<HomeScreen>
   int _unreadMessages = 0;
   bool? _showVolunteerView; // null = not set yet, defaults to true for volunteers
 
+  // Review Mode timeout handling
+  Timer? _loadingTimer;
+  bool _loadingTimedOut = false;
+  bool _initialLoadComplete = false;
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +64,43 @@ class _HomeScreenState extends State<HomeScreen>
     _checkVolunteerStatus();
     _checkTVKEvent();
     _listenToUnreadMessages();
+    _startLoadingTimer();
+  }
+
+  void _startLoadingTimer() {
+    // Start a 15-second timer for initial loading
+    _loadingTimer = Timer(const Duration(seconds: 15), () {
+      if (mounted && !_initialLoadComplete) {
+        setState(() => _loadingTimedOut = true);
+      }
+    });
+  }
+
+  void _markLoadingComplete() {
+    _loadingTimer?.cancel();
+    if (mounted && !_initialLoadComplete) {
+      setState(() => _initialLoadComplete = true);
+    }
+  }
+
+  void _retryLoading() {
+    setState(() {
+      _loadingTimedOut = false;
+      _initialLoadComplete = false;
+      _isCheckingVolunteer = true;
+    });
+    _checkVolunteerStatus();
+    _checkTVKEvent();
+    _startLoadingTimer();
+  }
+
+  void _continueWithDemo() {
+    // Mark as complete and show normal UI with whatever data we have
+    setState(() {
+      _loadingTimedOut = false;
+      _initialLoadComplete = true;
+      _isCheckingVolunteer = false;
+    });
   }
 
   void _listenToUnreadMessages() {
@@ -79,10 +123,12 @@ class _HomeScreenState extends State<HomeScreen>
             _showVolunteerView = true;
           }
         });
+        _markLoadingComplete();
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isCheckingVolunteer = false);
+        _markLoadingComplete();
       }
     }
   }
@@ -101,11 +147,20 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     _pulseController.dispose();
+    _loadingTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Show Review Mode screen if loading timed out
+    if (_loadingTimedOut) {
+      return ReviewModeScreen(
+        onRetry: _retryLoading,
+        onContinueDemo: _continueWithDemo,
+      );
+    }
+
     // If volunteer and showing volunteer view, display dashboard
     if (_volunteer != null && _showVolunteerView == true) {
       return WillPopScope(
