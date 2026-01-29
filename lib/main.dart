@@ -30,30 +30,20 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  try {
-    // Initialize Firebase
-    await FirebaseService.instance.initialize();
-
-    // Set up background message handler
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-    // Initialize push notifications
-    await PushNotificationService().initialize();
-
-    // Set navigator key for notification navigation
-    PushNotificationService.setNavigatorKey(navigatorKey);
-
-    // Initialize Remote Config (for API keys and feature flags)
-    await RemoteConfigService.instance.initialize();
-  } catch (e) {
-    print('Firebase initialization error: $e');
-    // Continue without Firebase for testing
-  }
-
+  // Set orientation immediately
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  // Initialize Firebase before running app (required for plugins)
+  try {
+    await FirebaseService.instance.initialize();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  } catch (e) {
+    debugPrint('Firebase init error: $e');
+  }
+
   runApp(const WomenSafetyApp());
 }
 
@@ -184,38 +174,28 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _checkAppState() async {
     try {
-      print('🚀 SplashScreen: Starting _checkAppState');
-      await Future.delayed(const Duration(milliseconds: 500)); // Brief splash
+      // Initialize remaining services in parallel
+      await Future.wait([
+        PushNotificationService().initialize(),
+        RemoteConfigService.instance.initialize(),
+      ]);
+      PushNotificationService.setNavigatorKey(navigatorKey);
 
-      print('🚀 SplashScreen: Getting SharedPreferences');
       final prefs = await SharedPreferences.getInstance();
       final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
-      print('🚀 SplashScreen: onboardingComplete = $onboardingComplete');
 
-      if (!mounted) {
-        print('🚀 SplashScreen: Widget not mounted, returning');
-        return;
-      }
+      if (!mounted) return;
 
       if (!onboardingComplete) {
-        // First time user - show onboarding
-        print('🚀 SplashScreen: Navigating to onboarding');
         Navigator.pushReplacementNamed(context, '/onboarding');
       } else if (!_authService.isLoggedIn) {
-        // Onboarding done but not logged in - show login
-        print('🚀 SplashScreen: Navigating to login');
         Navigator.pushReplacementNamed(context, '/login');
       } else {
-        // Logged in - save FCM token and go to home
-        print('🚀 SplashScreen: Saving FCM token');
         await PushNotificationService().saveTokenAfterLogin();
-        print('🚀 SplashScreen: Navigating to home');
         Navigator.pushReplacementNamed(context, '/home');
       }
-    } catch (e, stack) {
-      print('❌ SplashScreen error: $e');
-      print('❌ Stack: $stack');
-      // Navigate to onboarding on error
+    } catch (e) {
+      debugPrint('Splash error: $e');
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/onboarding');
       }
@@ -274,6 +254,23 @@ class _SplashScreenState extends State<SplashScreen> {
                 'Your Safety, Our Priority',
                 style: TextStyle(
                   fontSize: 16,
+                  color: Colors.white70,
+                ),
+              ),
+              const SizedBox(height: 48),
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Loading...',
+                style: TextStyle(
+                  fontSize: 14,
                   color: Colors.white70,
                 ),
               ),

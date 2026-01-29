@@ -1,128 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
-	<key>CFBundleDisplayName</key>
-	<string>Kaavala</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>Kaavala</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(FLUTTER_BUILD_NAME)</string>
-	<key>CFBundleSignature</key>
-	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
-	<key>UIMainStoryboardFile</key>
-	<string>Main</string>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-
-	<!-- Location Permissions -->
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Kaavala needs your location to share with emergency contacts during SOS alerts and to show your current position on the map.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Kaavala needs continuous location access to monitor your safety, detect if you're stationary too long, and share your location with trusted contacts even when the app is in the background.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Kaavala needs continuous location access to keep you safe by monitoring your location and alerting contacts if needed.</string>
-
-	<!-- Background Modes -->
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>fetch</string>
-		<string>location</string>
-		<string>processing</string>
-		<string>remote-notification</string>
-	</array>
-
-	<!-- Background Task Scheduler (required for processing mode) -->
-	<key>BGTaskSchedulerPermittedIdentifiers</key>
-	<array>
-		<string>com.forwardalpha.womenSafety.refresh</string>
-		<string>com.forwardalpha.womenSafety.processing</string>
-	</array>
-
-	<!-- Camera Permission -->
-	<key>NSCameraUsageDescription</key>
-	<string>Kaavala needs camera access to capture photo evidence when reporting harassment incidents.</string>
-
-	<!-- Photo Library Permission -->
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Kaavala needs photo library access to attach existing photos to harassment reports.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Kaavala needs permission to save photos taken as evidence.</string>
-
-	<!-- Contacts Permission -->
-	<key>NSContactsUsageDescription</key>
-	<string>Kaavala needs contacts access to help you quickly add trusted contacts and emergency contacts from your address book.</string>
-
-	<!-- Microphone (for future audio recording) -->
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Kaavala may use the microphone to record audio evidence in emergency situations.</string>
-
-	<!-- Face ID (for app lock feature) -->
-	<key>NSFaceIDUsageDescription</key>
-	<string>Kaavala can use Face ID to securely unlock the app and protect your privacy.</string>
-
-	<!-- Push Notifications -->
-	<key>NSUserNotificationsUsageDescription</key>
-	<string>Kaavala needs notification access to alert you about SOS emergencies from your trusted contacts.</string>
-
-	<!-- Bluetooth for SOS Buttons -->
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Kaavala uses Bluetooth to connect with your SOS panic button, allowing you to trigger emergency alerts discreetly.</string>
-	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>Kaavala uses Bluetooth to connect with your SOS panic button for emergency alerts.</string>
-
-	<!-- Firebase Messaging - Enable swizzling for automatic APNs token handling -->
-	<key>FirebaseAppDelegateProxyEnabled</key>
-	<true/>
-
-	<!-- Google Maps API Key (loaded from Secrets.xcconfig) -->
-	<key>GMSApiKey</key>
-	<string>$(GOOGLE_MAPS_API_KEY)</string>
-
-	<!-- URL Schemes for Firebase Auth reCAPTCHA -->
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.googleusercontent.apps.519631065567-28e9sv71rvdflpmgn8f0auanm8qn69fu</string>
-			</array>
-		</dict>
-	</array>
-
-	<!-- App Store Export Compliance -->
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-</dict>
+	<dict>
+		<key>CFBundleDevelopmentRegion</key>
+		<string>$(DEVELOPMENT_LANGUAGE)</string>
+		<key>CFBundleDisplayName</key>
+		<string>Kaavala</string>
+		<key>CFBundleExecutable</key>
+		<string>$(EXECUTABLE_NAME)</string>
+		<key>CFBundleIdentifier</key>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+		<key>CFBundleInfoDictionaryVersion</key>
+		<string>6.0</string>
+		<key>CFBundleName</key>
+		<string>Kaavala</string>
+		<key>CFBundlePackageType</key>
+		<string>APPL</string>
+		<key>CFBundleShortVersionString</key>
+		<string>$(FLUTTER_BUILD_NAME)</string>
+		<key>CFBundleSignature</key>
+		<string>????</string>
+		<key>CFBundleVersion</key>
+		<string>$(FLUTTER_BUILD_NUMBER)</string>
+		<key>LSRequiresIPhoneOS</key>
+		<true/>
+		<key>UILaunchStoryboardName</key>
+		<string>LaunchScreen</string>
+		<key>UIMainStoryboardFile</key>
+		<string>Main</string>
+		<key>UISupportedInterfaceOrientations</key>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+		</array>
+		<key>CADisableMinimumFrameDurationOnPhone</key>
+		<true/>
+		<key>UIApplicationSupportsIndirectInputEvents</key>
+		<true/>
+		<!-- Location Permissions -->
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Kaavala needs your location to share with emergency contacts during SOS alerts and to show your current position on the map.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>Kaavala needs continuous location access to monitor your safety, detect if you're stationary too long, and share your location with trusted contacts even when the app is in the background.</string>
+		<key>NSLocationAlwaysUsageDescription</key>
+		<string>Kaavala needs continuous location access to keep you safe by monitoring your location and alerting contacts if needed.</string>
+		<!-- Background Modes -->
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>fetch</string>
+			<string>location</string>
+			<string>processing</string>
+			<string>remote-notification</string>
+		</array>
+		<!-- Background Task Scheduler (required for processing mode) -->
+		<key>BGTaskSchedulerPermittedIdentifiers</key>
+		<array>
+			<string>com.forwardalpha.womenSafety.refresh</string>
+			<string>com.forwardalpha.womenSafety.processing</string>
+			<string>dev.flutter.background.refresh</string>
+		</array>
+		<!-- Camera Permission -->
+		<key>NSCameraUsageDescription</key>
+		<string>Kaavala needs camera access to capture photo evidence when reporting harassment incidents.</string>
+		<!-- Photo Library Permission -->
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Kaavala needs photo library access to attach existing photos to harassment reports.</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>Kaavala needs permission to save photos taken as evidence.</string>
+		<!-- Contacts Permission -->
+		<key>NSContactsUsageDescription</key>
+		<string>Kaavala needs contacts access to help you quickly add trusted contacts and emergency contacts from your address book.</string>
+		<!-- Microphone (for future audio recording) -->
+		<key>NSMicrophoneUsageDescription</key>
+		<string>Kaavala may use the microphone to record audio evidence in emergency situations.</string>
+		<!-- Face ID (for app lock feature) -->
+		<key>NSFaceIDUsageDescription</key>
+		<string>Kaavala can use Face ID to securely unlock the app and protect your privacy.</string>
+		<!-- Push Notifications -->
+		<key>NSUserNotificationsUsageDescription</key>
+		<string>Kaavala needs notification access to alert you about SOS emergencies from your trusted contacts.</string>
+		<!-- Bluetooth for SOS Buttons -->
+		<key>NSBluetoothAlwaysUsageDescription</key>
+		<string>Kaavala uses Bluetooth to connect with your SOS panic button, allowing you to trigger emergency alerts discreetly.</string>
+		<key>NSBluetoothPeripheralUsageDescription</key>
+		<string>Kaavala uses Bluetooth to connect with your SOS panic button for emergency alerts.</string>
+		<!-- Firebase Messaging - Enable swizzling for automatic APNs token handling -->
+		<key>FirebaseAppDelegateProxyEnabled</key>
+		<true/>
+		<!-- Google Maps API Key (loaded from Secrets.xcconfig) -->
+		<key>GMSApiKey</key>
+		<string>$(GOOGLE_MAPS_API_KEY)</string>
+		<!-- URL Schemes for Firebase Auth reCAPTCHA -->
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>com.googleusercontent.apps.519631065567-28e9sv71rvdflpmgn8f0auanm8qn69fu</string>
+				</array>
+			</dict>
+		</array>
+		<!-- App Store Export Compliance -->
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
+		<key>UIStatusBarHidden</key>
+		<false/>
+	</dict>
 </plist>

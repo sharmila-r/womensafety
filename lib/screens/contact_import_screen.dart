@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:permission_handler/permission_handler.dart' show openAppSettings;
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../models/trusted_contact.dart';
@@ -13,7 +13,8 @@ class ContactImportScreen extends StatefulWidget {
   State<ContactImportScreen> createState() => _ContactImportScreenState();
 }
 
-class _ContactImportScreenState extends State<ContactImportScreen> {
+class _ContactImportScreenState extends State<ContactImportScreen>
+    with WidgetsBindingObserver {
   List<Contact> _phoneContacts = [];
   Set<String> _selectedContactIds = {};
   bool _isLoading = true;
@@ -24,54 +25,147 @@ class _ContactImportScreenState extends State<ContactImportScreen> {
   @override
   void initState() {
     super.initState();
+    debugPrint('[ContactImport] initState - adding lifecycle observer');
+    WidgetsBinding.instance.addObserver(this);
     _loadContacts();
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    debugPrint('[ContactImport] Lifecycle state changed: $state');
+    if (state == AppLifecycleState.resumed) {
+      // Recheck permission when app resumes (user might have changed it in Settings)
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) _recheckPermission();
+      });
+    }
+  }
+
+  Future<void> _recheckPermission() async {
+    debugPrint('[ContactImport] _recheckPermission called, mounted=$mounted, _hasPermission=$_hasPermission');
+    if (!mounted) return;
+
+    try {
+      // Use flutter_contacts to check permission
+      final hasAccess = await FlutterContacts.requestPermission(readonly: true);
+      debugPrint('[ContactImport] Recheck hasAccess: $hasAccess');
+
+      if (!mounted) return;
+
+      if (hasAccess && !_hasPermission) {
+        // Permission was granted in Settings - reload contacts
+        debugPrint('[ContactImport] Permission newly granted, fetching contacts...');
+        await _fetchContacts();
+      } else if (!hasAccess && _hasPermission) {
+        // Permission was revoked in Settings - clear contacts and show permission UI
+        debugPrint('[ContactImport] Permission revoked, clearing contacts');
+        if (mounted) {
+          setState(() {
+            _hasPermission = false;
+            _isPermanentlyDenied = true;
+            _phoneContacts = [];
+            _selectedContactIds = {};
+            _isLoading = false;
+          });
+        }
+      } else {
+        debugPrint('[ContactImport] No permission change needed');
+      }
+    } catch (e, stack) {
+      debugPrint('[ContactImport] Error rechecking permission: $e');
+      debugPrint('[ContactImport] Stack: $stack');
+    }
+  }
+
   Future<void> _loadContacts() async {
+    debugPrint('[ContactImport] _loadContacts called, mounted=$mounted');
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
-    // Check permission status first
-    final status = await Permission.contacts.status;
+    try {
+      debugPrint('[ContactImport] Requesting permission via FlutterContacts...');
+      // Use flutter_contacts built-in permission request
+      // This properly triggers the iOS permission dialog
+      final hasPermission = await FlutterContacts.requestPermission();
+      debugPrint('[ContactImport] Permission result: $hasPermission');
 
-    if (status.isPermanentlyDenied) {
+      if (!mounted) {
+        debugPrint('[ContactImport] Not mounted after permission request');
+        return;
+      }
+
+      if (hasPermission) {
+        debugPrint('[ContactImport] Permission granted, fetching contacts...');
+        await _fetchContacts();
+        return;
+      }
+
+      // Permission denied - show settings option
+      debugPrint('[ContactImport] Permission denied');
       setState(() {
         _hasPermission = false;
         _isPermanentlyDenied = true;
         _isLoading = false;
       });
-      return;
+    } catch (e, stack) {
+      debugPrint('[ContactImport] Error loading contacts: $e');
+      debugPrint('[ContactImport] Stack: $stack');
+      if (mounted) {
+        setState(() {
+          _hasPermission = false;
+          _isPermanentlyDenied = true;
+          _isLoading = false;
+        });
+      }
     }
+  }
 
-    // Request permission
-    final result = await Permission.contacts.request();
+  Future<void> _fetchContacts() async {
+    debugPrint('[ContactImport] _fetchContacts called');
+    try {
+      debugPrint('[ContactImport] Getting contacts from FlutterContacts...');
+      final contacts = await FlutterContacts.getContacts(
+        withProperties: true,
+        withPhoto: true,
+      );
+      debugPrint('[ContactImport] Got ${contacts.length} contacts');
 
-    if (!result.isGranted) {
+      if (!mounted) {
+        debugPrint('[ContactImport] Not mounted after getting contacts');
+        return;
+      }
+
+      // Filter out contacts without phone numbers
+      final validContacts = contacts.where((c) => c.phones.isNotEmpty).toList();
+      debugPrint('[ContactImport] ${validContacts.length} contacts with phone numbers');
+
+      // Sort alphabetically
+      validContacts.sort((a, b) => a.displayName.compareTo(b.displayName));
+
       setState(() {
-        _hasPermission = false;
-        _isPermanentlyDenied = result.isPermanentlyDenied;
+        _phoneContacts = validContacts;
+        _hasPermission = true;
+        _isPermanentlyDenied = false;
         _isLoading = false;
       });
-      return;
+      debugPrint('[ContactImport] Contacts loaded successfully');
+    } catch (e, stack) {
+      debugPrint('[ContactImport] Error fetching contacts: $e');
+      debugPrint('[ContactImport] Stack: $stack');
+      if (mounted) {
+        setState(() {
+          _hasPermission = false;
+          _isPermanentlyDenied = true;
+          _isLoading = false;
+        });
+      }
     }
-
-    // Permission granted, load contacts
-    final contacts = await FlutterContacts.getContacts(
-      withProperties: true,
-      withPhoto: true,
-    );
-
-    // Filter out contacts without phone numbers
-    final validContacts = contacts.where((c) => c.phones.isNotEmpty).toList();
-
-    // Sort alphabetically
-    validContacts.sort((a, b) => a.displayName.compareTo(b.displayName));
-
-    setState(() {
-      _phoneContacts = validContacts;
-      _hasPermission = true;
-      _isPermanentlyDenied = false;
-      _isLoading = false;
-    });
   }
 
   Future<void> _openAppSettings() async {

@@ -9,13 +9,16 @@ import FirebaseAuth
 
   private var methodChannel: FlutterMethodChannel?
   private var apnsTokenReceived = false
+  private var wasInBackground = false
 
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // Configure Firebase first
-    FirebaseApp.configure()
+    // Configure Firebase first (only if not already configured)
+    if FirebaseApp.app() == nil {
+      FirebaseApp.configure()
+    }
 
     // Load Google Maps API key from Info.plist (set via Secrets.xcconfig)
     if let apiKey = Bundle.main.object(forInfoDictionaryKey: "GMSApiKey") as? String, !apiKey.isEmpty {
@@ -93,5 +96,36 @@ import FirebaseAuth
 
     // Pass to super for other handlers
     super.application(application, didReceiveRemoteNotification: userInfo, fetchCompletionHandler: completionHandler)
+  }
+
+  // Handle app going to background (e.g., when user goes to Settings)
+  override func applicationWillResignActive(_ application: UIApplication) {
+    wasInBackground = true
+    super.applicationWillResignActive(application)
+  }
+
+  // Handle app returning from background
+  override func applicationDidBecomeActive(_ application: UIApplication) {
+    if wasInBackground {
+      wasInBackground = false
+      // Give Firebase Auth a moment to stabilize after returning from background
+      // This helps prevent crashes when stream handlers reconnect
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        // Touch the auth instance to ensure it's properly initialized
+        _ = Auth.auth().currentUser
+      }
+    }
+    super.applicationDidBecomeActive(application)
+  }
+
+  // Handle app entering background
+  override func applicationDidEnterBackground(_ application: UIApplication) {
+    wasInBackground = true
+    super.applicationDidEnterBackground(application)
+  }
+
+  // Handle app being terminated
+  override func applicationWillTerminate(_ application: UIApplication) {
+    super.applicationWillTerminate(application)
   }
 }

@@ -187,37 +187,41 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> _loadData() async {
-    final prefs = await SharedPreferences.getInstance();
+    try {
+      final prefs = await SharedPreferences.getInstance();
 
-    // Load trusted contacts
-    final contactsJson = prefs.getString('trustedContacts');
-    if (contactsJson != null) {
-      final List<dynamic> decoded = jsonDecode(contactsJson);
-      _trustedContacts =
-          decoded.map((e) => TrustedContact.fromJson(e)).toList();
+      // Load trusted contacts
+      final contactsJson = prefs.getString('trustedContacts');
+      if (contactsJson != null) {
+        final List<dynamic> decoded = jsonDecode(contactsJson);
+        _trustedContacts =
+            decoded.map((e) => TrustedContact.fromJson(e)).toList();
+      }
+
+      // Load reports
+      final reportsJson = prefs.getString('reports');
+      if (reportsJson != null) {
+        final List<dynamic> decoded = jsonDecode(reportsJson);
+        _reports = decoded.map((e) => HarassmentReport.fromJson(e)).toList();
+      }
+
+      // Load settings
+      _stationaryAlertMinutes = prefs.getInt('stationaryAlertMinutes') ?? 30;
+      _autoAlertEnabled = prefs.getBool('autoAlertEnabled') ?? false;
+      _alertNearbyVolunteers = prefs.getBool('alertNearbyVolunteers') ?? true;
+      _duressCode = prefs.getString('duressCode');
+      _realCancelCode = prefs.getString('realCancelCode');
+
+      // Load locale
+      final savedLocale = prefs.getString('locale');
+      if (savedLocale != null) {
+        _locale = Locale(savedLocale);
+      }
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('AppProvider load error: $e');
     }
-
-    // Load reports
-    final reportsJson = prefs.getString('reports');
-    if (reportsJson != null) {
-      final List<dynamic> decoded = jsonDecode(reportsJson);
-      _reports = decoded.map((e) => HarassmentReport.fromJson(e)).toList();
-    }
-
-    // Load settings
-    _stationaryAlertMinutes = prefs.getInt('stationaryAlertMinutes') ?? 30;
-    _autoAlertEnabled = prefs.getBool('autoAlertEnabled') ?? false;
-    _alertNearbyVolunteers = prefs.getBool('alertNearbyVolunteers') ?? true;
-    _duressCode = prefs.getString('duressCode');
-    _realCancelCode = prefs.getString('realCancelCode');
-
-    // Load locale
-    final savedLocale = prefs.getString('locale');
-    if (savedLocale != null) {
-      _locale = Locale(savedLocale);
-    }
-
-    notifyListeners();
   }
 
   // ==================== LOCALIZATION ====================

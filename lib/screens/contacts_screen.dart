@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart' show openAppSettings;
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../models/trusted_contact.dart';
@@ -14,17 +15,40 @@ class ContactsScreen extends StatefulWidget {
 class _ContactsScreenState extends State<ContactsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _showPermissionBanner = false;
 
   @override
   void initState() {
     super.initState();
+    debugPrint('[ContactsScreen] initState called');
     _tabController = TabController(length: 4, vsync: this);
+    // Don't check permission here - causes native crash on cold start
+    // _checkIfShouldShowBanner();
+    debugPrint('[ContactsScreen] initState complete');
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkIfShouldShowBanner() async {
+    // Don't show permission banner here - contact_import_screen handles permission flow
+    // This avoids crashes from Permission.contacts.status without PERMISSION_CONTACTS=1
+    if (mounted) {
+      setState(() {
+        _showPermissionBanner = false;
+      });
+    }
+  }
+
+  Future<void> _openAppSettings() async {
+    await openAppSettings();
+    // Recheck permission when user returns
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) _checkIfShouldShowBanner();
+    });
   }
 
   @override
@@ -42,6 +66,8 @@ class _ContactsScreenState extends State<ContactsScreen>
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
           tabs: const [
             Tab(text: 'All'),
             Tab(text: 'Emergency'),
@@ -56,30 +82,41 @@ class _ContactsScreenState extends State<ContactsScreen>
             return _buildEmptyState(context);
           }
 
-          return TabBarView(
-            controller: _tabController,
+          return Column(
             children: [
-              _buildContactsList(provider.trustedContacts, provider),
-              _buildContactsList(
-                provider.trustedContacts
-                    .where((c) => c.category == ContactCategory.emergency)
-                    .toList(),
-                provider,
-                emptyMessage: 'No emergency contacts',
-              ),
-              _buildContactsList(
-                provider.trustedContacts
-                    .where((c) => c.category == ContactCategory.backup)
-                    .toList(),
-                provider,
-                emptyMessage: 'No backup contacts',
-              ),
-              _buildContactsList(
-                provider.trustedContacts
-                    .where((c) => c.category == ContactCategory.trusted)
-                    .toList(),
-                provider,
-                emptyMessage: 'No trusted contacts',
+              // Permission banner when permanently denied
+              if (_showPermissionBanner)
+                _buildPermissionBanner(),
+
+              // Tab content
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildContactsList(provider.trustedContacts, provider),
+                    _buildContactsList(
+                      provider.trustedContacts
+                          .where((c) => c.category == ContactCategory.emergency)
+                          .toList(),
+                      provider,
+                      emptyMessage: 'No emergency contacts',
+                    ),
+                    _buildContactsList(
+                      provider.trustedContacts
+                          .where((c) => c.category == ContactCategory.backup)
+                          .toList(),
+                      provider,
+                      emptyMessage: 'No backup contacts',
+                    ),
+                    _buildContactsList(
+                      provider.trustedContacts
+                          .where((c) => c.category == ContactCategory.trusted)
+                          .toList(),
+                      provider,
+                      emptyMessage: 'No trusted contacts',
+                    ),
+                  ],
+                ),
               ),
             ],
           );
@@ -94,58 +131,123 @@ class _ContactsScreenState extends State<ContactsScreen>
     );
   }
 
+  Widget _buildPermissionBanner() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange[200]!),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.contacts, color: Colors.orange[700], size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Contact Access Denied',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange[900],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Enable in Settings to import contacts from your phone',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.orange[800],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: _openAppSettings,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange[600],
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text(
+              'Settings',
+              style: TextStyle(fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildEmptyState(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.contacts_outlined,
-              size: 80,
-              color: Colors.grey[300],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No trusted contacts yet',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Add contacts who will receive\nyour SOS alerts',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[500]),
-            ),
-            const SizedBox(height: 32),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Permission banner when permanently denied
+              if (_showPermissionBanner) ...[
+                _buildPermissionBanner(),
+                const SizedBox(height: 24),
+              ],
 
-            // Import from phone button (primary)
-            ElevatedButton.icon(
-              onPressed: () => _openImportScreen(context),
-              icon: const Icon(Icons.contacts),
-              label: const Text('Import from Phone'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE91E63),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
+              Icon(
+                Icons.contacts_outlined,
+                size: 80,
+                color: Colors.grey[300],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No trusted contacts yet',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-            ),
+              const SizedBox(height: 8),
+              Text(
+                'Add contacts who will receive\nyour SOS alerts',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[500]),
+              ),
+              const SizedBox(height: 32),
 
-            const SizedBox(height: 12),
+              // Import from phone button (primary)
+              ElevatedButton.icon(
+                onPressed: () => _openImportScreen(context),
+                icon: const Icon(Icons.contacts),
+                label: const Text('Import from Phone'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE91E63),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                ),
+              ),
 
-            // Manual add button (secondary)
-            OutlinedButton.icon(
-              onPressed: () => _showAddContactDialog(context),
-              icon: const Icon(Icons.person_add),
-              label: const Text('Add Manually'),
-            ),
-          ],
+              const SizedBox(height: 12),
+
+              // Manual add button (secondary)
+              OutlinedButton.icon(
+                onPressed: () => _showAddContactDialog(context),
+                icon: const Icon(Icons.person_add),
+                label: const Text('Add Manually'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -353,11 +455,13 @@ class _ContactsScreenState extends State<ContactsScreen>
     );
   }
 
-  void _openImportScreen(BuildContext context) {
-    Navigator.push(
+  void _openImportScreen(BuildContext context) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const ContactImportScreen()),
     );
+    // Recheck permission when returning from import screen
+    if (mounted) _checkIfShouldShowBanner();
   }
 
   void _showQuickCategoryDialog(
