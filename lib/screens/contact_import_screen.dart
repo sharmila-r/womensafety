@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:permission_handler/permission_handler.dart' show openAppSettings;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../models/trusted_contact.dart';
@@ -20,14 +20,14 @@ class _ContactImportScreenState extends State<ContactImportScreen>
   bool _isLoading = true;
   String _searchQuery = '';
   bool _hasPermission = false;
-  bool _isPermanentlyDenied = false;
+  bool _permissionDenied = false; // User explicitly denied
+  bool _showExplanation = true; // Show explanation before requesting
 
   @override
   void initState() {
     super.initState();
-    debugPrint('[ContactImport] initState - adding lifecycle observer');
     WidgetsBinding.instance.addObserver(this);
-    _loadContacts();
+    _checkInitialPermission();
   }
 
   @override
@@ -38,88 +38,105 @@ class _ContactImportScreenState extends State<ContactImportScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    debugPrint('[ContactImport] Lifecycle state changed: $state');
-    if (state == AppLifecycleState.resumed) {
-      // Recheck permission when app resumes (user might have changed it in Settings)
+    if (state == AppLifecycleState.resumed && _permissionDenied) {
+      // User might have granted permission in Settings
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) _recheckPermission();
       });
     }
   }
 
-  Future<void> _recheckPermission() async {
-    debugPrint('[ContactImport] _recheckPermission called, mounted=$mounted, _hasPermission=$_hasPermission');
+  /// Check if we already have permission (without requesting)
+  Future<void> _checkInitialPermission() async {
     if (!mounted) return;
 
     try {
-      // Use flutter_contacts to check permission
-      final hasAccess = await FlutterContacts.requestPermission(readonly: true);
-      debugPrint('[ContactImport] Recheck hasAccess: $hasAccess');
+      // Check current permission status WITHOUT triggering a request
+      final status = await Permission.contacts.status;
 
       if (!mounted) return;
 
-      if (hasAccess && !_hasPermission) {
-        // Permission was granted in Settings - reload contacts
-        debugPrint('[ContactImport] Permission newly granted, fetching contacts...');
+      if (status.isGranted || status.isLimited) {
+        // Already have permission - load contacts directly
+        setState(() {
+          _showExplanation = false;
+          _isLoading = true;
+        });
         await _fetchContacts();
-      } else if (!hasAccess && _hasPermission) {
-        // Permission was revoked in Settings - clear contacts and show permission UI
-        debugPrint('[ContactImport] Permission revoked, clearing contacts');
-        if (mounted) {
-          setState(() {
-            _hasPermission = false;
-            _isPermanentlyDenied = true;
-            _phoneContacts = [];
-            _selectedContactIds = {};
-            _isLoading = false;
-          });
-        }
+      } else if (status.isDenied || status.isPermanentlyDenied) {
+        // Previously denied - show settings option
+        setState(() {
+          _showExplanation = false;
+          _permissionDenied = true;
+          _isLoading = false;
+        });
       } else {
-        debugPrint('[ContactImport] No permission change needed');
+        // Not determined yet - show explanation screen
+        setState(() {
+          _showExplanation = true;
+          _permissionDenied = false;
+          _isLoading = false;
+        });
       }
-    } catch (e, stack) {
-      debugPrint('[ContactImport] Error rechecking permission: $e');
-      debugPrint('[ContactImport] Stack: $stack');
+    } catch (e) {
+      debugPrint('Error checking permission: $e');
+      setState(() {
+        _showExplanation = true;
+        _isLoading = false;
+      });
     }
   }
 
-  Future<void> _loadContacts() async {
-    debugPrint('[ContactImport] _loadContacts called, mounted=$mounted');
+  Future<void> _recheckPermission() async {
+    if (!mounted) return;
+
+    try {
+      final status = await Permission.contacts.status;
+
+      if (!mounted) return;
+
+      if (status.isGranted || status.isLimited) {
+        // Permission granted in Settings
+        setState(() {
+          _permissionDenied = false;
+          _showExplanation = false;
+          _isLoading = true;
+        });
+        await _fetchContacts();
+      }
+    } catch (e) {
+      debugPrint('Error rechecking permission: $e');
+    }
+  }
+
+  /// Request permission - called when user taps "Allow Access" button
+  Future<void> _requestPermission() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
-      debugPrint('[ContactImport] Requesting permission via FlutterContacts...');
-      // Use flutter_contacts built-in permission request
-      // This properly triggers the iOS permission dialog
+      // This will show the native iOS permission dialog
       final hasPermission = await FlutterContacts.requestPermission();
-      debugPrint('[ContactImport] Permission result: $hasPermission');
 
-      if (!mounted) {
-        debugPrint('[ContactImport] Not mounted after permission request');
-        return;
-      }
+      if (!mounted) return;
 
       if (hasPermission) {
-        debugPrint('[ContactImport] Permission granted, fetching contacts...');
         await _fetchContacts();
-        return;
-      }
-
-      // Permission denied - show settings option
-      debugPrint('[ContactImport] Permission denied');
-      setState(() {
-        _hasPermission = false;
-        _isPermanentlyDenied = true;
-        _isLoading = false;
-      });
-    } catch (e, stack) {
-      debugPrint('[ContactImport] Error loading contacts: $e');
-      debugPrint('[ContactImport] Stack: $stack');
-      if (mounted) {
+      } else {
+        // User denied permission
         setState(() {
           _hasPermission = false;
-          _isPermanentlyDenied = true;
+          _permissionDenied = true;
+          _showExplanation = false;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error requesting permission: $e');
+      if (mounted) {
+        setState(() {
+          _permissionDenied = true;
+          _showExplanation = false;
           _isLoading = false;
         });
       }
@@ -127,23 +144,16 @@ class _ContactImportScreenState extends State<ContactImportScreen>
   }
 
   Future<void> _fetchContacts() async {
-    debugPrint('[ContactImport] _fetchContacts called');
     try {
-      debugPrint('[ContactImport] Getting contacts from FlutterContacts...');
       final contacts = await FlutterContacts.getContacts(
         withProperties: true,
         withPhoto: true,
       );
-      debugPrint('[ContactImport] Got ${contacts.length} contacts');
 
-      if (!mounted) {
-        debugPrint('[ContactImport] Not mounted after getting contacts');
-        return;
-      }
+      if (!mounted) return;
 
       // Filter out contacts without phone numbers
       final validContacts = contacts.where((c) => c.phones.isNotEmpty).toList();
-      debugPrint('[ContactImport] ${validContacts.length} contacts with phone numbers');
 
       // Sort alphabetically
       validContacts.sort((a, b) => a.displayName.compareTo(b.displayName));
@@ -151,17 +161,17 @@ class _ContactImportScreenState extends State<ContactImportScreen>
       setState(() {
         _phoneContacts = validContacts;
         _hasPermission = true;
-        _isPermanentlyDenied = false;
+        _permissionDenied = false;
+        _showExplanation = false;
         _isLoading = false;
       });
-      debugPrint('[ContactImport] Contacts loaded successfully');
-    } catch (e, stack) {
-      debugPrint('[ContactImport] Error fetching contacts: $e');
-      debugPrint('[ContactImport] Stack: $stack');
+    } catch (e) {
+      debugPrint('Error fetching contacts: $e');
       if (mounted) {
         setState(() {
           _hasPermission = false;
-          _isPermanentlyDenied = true;
+          _permissionDenied = true;
+          _showExplanation = false;
           _isLoading = false;
         });
       }
@@ -171,9 +181,9 @@ class _ContactImportScreenState extends State<ContactImportScreen>
   Future<void> _openAppSettings() async {
     final opened = await openAppSettings();
     if (opened) {
-      // When user returns from settings, reload contacts
+      // When user returns from settings, recheck permission
       Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) _loadContacts();
+        if (mounted) _recheckPermission();
       });
     }
   }
@@ -284,7 +294,67 @@ class _ContactImportScreenState extends State<ContactImportScreen>
       );
     }
 
-    if (!_hasPermission) {
+    // Show explanation screen before requesting permission
+    if (_showExplanation && !_hasPermission) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE91E63).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.contacts,
+                  size: 64,
+                  color: Color(0xFFE91E63),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Import Your Contacts',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Kaavala needs access to your contacts to help you quickly add trusted contacts and emergency contacts.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 15, color: Colors.black87),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Your contacts are only used within the app and are never shared or uploaded.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: _requestPermission,
+                icon: const Icon(Icons.check_circle_outline),
+                label: const Text('Allow Access to Contacts'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE91E63),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Not Now'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Permission was denied - show settings option
+    if (_permissionDenied && !_hasPermission) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -294,44 +364,30 @@ class _ContactImportScreenState extends State<ContactImportScreen>
               const Icon(Icons.contacts, size: 64, color: Colors.grey),
               const SizedBox(height: 16),
               const Text(
-                'Contact Permission Required',
+                'Contact Access Denied',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              Text(
-                _isPermanentlyDenied
-                    ? 'Contact permission was denied. Please enable it in app settings to import your trusted contacts.'
-                    : 'Please grant contact permission to import your trusted contacts.',
+              const Text(
+                'To import contacts, please enable contact access in your device settings.',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              if (_isPermanentlyDenied) ...[
-                ElevatedButton.icon(
-                  onPressed: _openAppSettings,
-                  icon: const Icon(Icons.settings),
-                  label: const Text('Open Settings'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE91E63),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  ),
+              ElevatedButton.icon(
+                onPressed: _openAppSettings,
+                icon: const Icon(Icons.settings),
+                label: const Text('Open Settings'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE91E63),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: _loadContacts,
-                  child: const Text('Check Again'),
-                ),
-              ] else
-                ElevatedButton.icon(
-                  onPressed: _loadContacts,
-                  icon: const Icon(Icons.security),
-                  label: const Text('Grant Permission'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE91E63),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  ),
-                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
             ],
           ),
         ),
