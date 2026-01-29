@@ -370,8 +370,41 @@ class _ContactImportScreenState extends State<ContactImportScreen>
     }
 
     if (_phoneContacts.isEmpty) {
-      return const Center(
-        child: Text('No contacts found on your device'),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.contacts_outlined, size: 64, color: Colors.grey[300]),
+              const SizedBox(height: 16),
+              const Text(
+                'No contacts found on your device',
+                style: TextStyle(fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              Text(
+                'You can add contacts manually',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // The contacts screen has the add manually dialog
+                },
+                icon: const Icon(Icons.person_add),
+                label: const Text('Add Manually'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
