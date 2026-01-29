@@ -379,15 +379,33 @@ class _ContactImportScreenState extends State<ContactImportScreen>
               Icon(Icons.contacts_outlined, size: 64, color: Colors.grey[300]),
               const SizedBox(height: 16),
               const Text(
-                'No contacts found on your device',
-                style: TextStyle(fontSize: 16),
+                'No contacts found',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'If you granted limited access, you may need to select more contacts in Settings.',
+                style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              // Open Settings button
+              ElevatedButton.icon(
+                onPressed: _openAppSettings,
+                icon: const Icon(Icons.settings),
+                label: const Text('Open Settings'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE91E63),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
               ),
               const SizedBox(height: 24),
               const Divider(),
               const SizedBox(height: 16),
               Text(
-                'You can add contacts manually',
+                'Or add contacts manually',
                 style: TextStyle(color: Colors.grey[600]),
               ),
               const SizedBox(height: 12),
