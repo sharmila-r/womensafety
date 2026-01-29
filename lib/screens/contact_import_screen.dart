@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:permission_handler/permission_handler.dart' show openAppSettings;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../models/trusted_contact.dart';
@@ -52,30 +52,26 @@ class _ContactImportScreenState extends State<ContactImportScreen>
     if (!mounted) return;
 
     try {
-      // Use flutter_contacts to check permission
-      final hasAccess = await FlutterContacts.requestPermission(readonly: true);
-      debugPrint('[ContactImport] Recheck hasAccess: $hasAccess');
+      // Check permission status using permission_handler
+      final status = await Permission.contacts.status;
+      debugPrint('[ContactImport] Recheck permission status: $status');
 
       if (!mounted) return;
 
-      if (hasAccess && !_hasPermission) {
-        // Permission was granted in Settings - reload contacts
-        debugPrint('[ContactImport] Permission newly granted, fetching contacts...');
+      // isGranted covers full access, isLimited covers limited access (iOS 14+)
+      if (status.isGranted || status.isLimited) {
+        // We have access - fetch contacts
         await _fetchContacts();
-      } else if (!hasAccess && _hasPermission) {
-        // Permission was revoked in Settings - clear contacts and show permission UI
+      } else if (_hasPermission) {
+        // Permission was revoked
         debugPrint('[ContactImport] Permission revoked, clearing contacts');
-        if (mounted) {
-          setState(() {
-            _hasPermission = false;
-            _isPermanentlyDenied = true;
-            _phoneContacts = [];
-            _selectedContactIds = {};
-            _isLoading = false;
-          });
-        }
-      } else {
-        debugPrint('[ContactImport] No permission change needed');
+        setState(() {
+          _hasPermission = false;
+          _isPermanentlyDenied = status.isPermanentlyDenied;
+          _phoneContacts = [];
+          _selectedContactIds = {};
+          _isLoading = false;
+        });
       }
     } catch (e, stack) {
       debugPrint('[ContactImport] Error rechecking permission: $e');
@@ -89,6 +85,20 @@ class _ContactImportScreenState extends State<ContactImportScreen>
     setState(() => _isLoading = true);
 
     try {
+      // First check current permission status using permission_handler
+      final status = await Permission.contacts.status;
+      debugPrint('[ContactImport] Current permission status: $status');
+
+      if (!mounted) return;
+
+      // isGranted covers full access, isLimited covers limited access (iOS 14+)
+      if (status.isGranted || status.isLimited) {
+        debugPrint('[ContactImport] Already have permission, fetching contacts...');
+        await _fetchContacts();
+        return;
+      }
+
+      // Need to request permission
       debugPrint('[ContactImport] Requesting permission via FlutterContacts...');
       // Use flutter_contacts built-in permission request
       // This properly triggers the iOS permission dialog
@@ -106,11 +116,12 @@ class _ContactImportScreenState extends State<ContactImportScreen>
         return;
       }
 
-      // Permission denied - show settings option
-      debugPrint('[ContactImport] Permission denied');
+      // Permission denied - check final status
+      final finalStatus = await Permission.contacts.status;
+      debugPrint('[ContactImport] Permission denied, final status: $finalStatus');
       setState(() {
         _hasPermission = false;
-        _isPermanentlyDenied = true;
+        _isPermanentlyDenied = finalStatus.isPermanentlyDenied || finalStatus.isDenied;
         _isLoading = false;
       });
     } catch (e, stack) {
@@ -332,6 +343,26 @@ class _ContactImportScreenState extends State<ContactImportScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   ),
                 ),
+              // Add manually option
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              Text(
+                'Or add contacts manually',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // The contacts screen has the add manually dialog
+                },
+                icon: const Icon(Icons.person_add),
+                label: const Text('Add Manually'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+              ),
             ],
           ),
         ),
