@@ -15,6 +15,7 @@ import 'screens/onboarding_screen.dart';
 import 'screens/auth/phone_login_screen.dart';
 import 'screens/volunteer/sos_response_screen.dart';
 import 'screens/tvk/tvk_dashboard_screen.dart';
+import 'screens/permission_setup_screen.dart';
 import 'services/firebase_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/remote_config_service.dart';
@@ -116,6 +117,7 @@ class WomenSafetyApp extends StatelessWidget {
                 title: 'Sign In',
                 subtitle: 'Sign in to access all features',
               ),
+              '/permission-setup': (context) => const PermissionSetupScreen(),
             },
             onGenerateRoute: (settings) {
               if (settings.name == '/sos-response') {
@@ -192,7 +194,13 @@ class _SplashScreenState extends State<SplashScreen> {
         Navigator.pushReplacementNamed(context, '/login');
       } else {
         await PushNotificationService().saveTokenAfterLogin();
-        Navigator.pushReplacementNamed(context, '/home');
+        // Check if permissions setup is complete
+        final permissionsComplete = prefs.getBool('permissions_setup_complete') ?? false;
+        if (!permissionsComplete) {
+          Navigator.pushReplacementNamed(context, '/permission-setup');
+        } else {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
       }
     } catch (e) {
       debugPrint('Splash error: $e');
