@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -21,6 +22,7 @@ class _ContactImportScreenState extends State<ContactImportScreen>
   String _searchQuery = '';
   bool _hasPermission = false;
   bool _isPermanentlyDenied = false;
+  bool _showAccessTip = true;
 
   @override
   void initState() {
@@ -393,6 +395,41 @@ class _ContactImportScreenState extends State<ContactImportScreen>
             onChanged: (value) => setState(() => _searchQuery = value),
           ),
         ),
+
+        // Tip banner showing how to manage contact access via Settings
+        if (_showAccessTip)
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.lightbulb_outline, color: Colors.grey.shade600, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    defaultTargetPlatform == TargetPlatform.iOS
+                        ? 'Tip: You can manage contact access in Settings > Kaavala > Contacts'
+                        : 'Tip: You can manage contact access in Settings > Apps > Kaavala > Permissions > Contacts',
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => setState(() => _showAccessTip = false),
+                  child: Icon(Icons.close, color: Colors.grey.shade400, size: 18),
+                ),
+              ],
+            ),
+          ),
+
+        if (_showAccessTip) const SizedBox(height: 8),
 
         // Select all / count row
         Padding(
