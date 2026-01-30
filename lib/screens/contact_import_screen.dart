@@ -145,7 +145,7 @@ class _ContactImportScreenState extends State<ContactImportScreen>
       debugPrint('[ContactImport] Getting contacts from FlutterContacts...');
       final contacts = await FlutterContacts.getContacts(
         withProperties: true,
-        withPhoto: true,
+        withPhoto: false, // Disabled to prevent iOS memory crash with many contacts
       );
       debugPrint('[ContactImport] Got ${contacts.length} contacts');
 
