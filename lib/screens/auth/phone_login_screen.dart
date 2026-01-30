@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/auth_service.dart';
@@ -132,7 +133,10 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
         // Save FCM token after successful login
         await PushNotificationService().saveTokenAfterLogin();
         // Navigate to home after successful login
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacementNamed(
+          context,
+          defaultTargetPlatform == TargetPlatform.android ? '/permission-setup' : '/home',
+        );
       }
     } catch (e) {
       final phone = _formatPhoneNumber(_phoneController.text.trim());
@@ -152,7 +156,10 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
         // Save FCM token after successful login
         await PushNotificationService().saveTokenAfterLogin();
         // Navigate to home after successful login
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacementNamed(
+          context,
+          defaultTargetPlatform == TargetPlatform.android ? '/permission-setup' : '/home',
+        );
       }
     } catch (e) {
       setState(() {
@@ -164,7 +171,10 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
 
   /// Continue in demo mode (for App Store review when Firebase auth fails)
   void _continueInDemoMode() {
-    Navigator.pushReplacementNamed(context, '/home');
+    Navigator.pushReplacementNamed(
+          context,
+          defaultTargetPlatform == TargetPlatform.android ? '/permission-setup' : '/home',
+        );
   }
 
   @override

@@ -1,24 +1,35 @@
+import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/country_config.dart';
 
 class SmsService {
-  static Future<void> sendSMS({
+  /// Send SMS by opening the SMS app with pre-filled message
+  /// Note: Push notifications are the primary alert method, SMS is backup
+  static Future<bool> sendSMS({
     required List<String> phoneNumbers,
     required String message,
   }) async {
-    final String recipients = phoneNumbers.join(',');
-    final Uri smsUri = Uri(
-      scheme: 'sms',
-      path: recipients,
-      queryParameters: {'body': message},
-    );
+    try {
+      final String recipients = phoneNumbers.join(',');
+      final Uri smsUri = Uri(
+        scheme: 'sms',
+        path: recipients,
+        queryParameters: {'body': message},
+      );
 
-    if (await canLaunchUrl(smsUri)) {
-      await launchUrl(smsUri);
+      if (await canLaunchUrl(smsUri)) {
+        await launchUrl(smsUri);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error opening SMS app: $e');
+      return false;
     }
   }
 
-  static Future<void> sendEmergencySMS({
+  /// Send Emergency SOS SMS
+  static Future<bool> sendEmergencySMS({
     required List<String> phoneNumbers,
     required double latitude,
     required double longitude,
@@ -27,25 +38,26 @@ class SmsService {
     final String mapsUrl =
         'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude';
     final String message = '''
-🚨 EMERGENCY SOS ALERT 🚨
+EMERGENCY SOS ALERT
 
 I need immediate help!
 
-📍 My Location:
+My Location:
 $address
 
-🗺️ Google Maps:
+Google Maps:
 $mapsUrl
 
-⏰ Time: ${DateTime.now().toString().substring(0, 19)}
+Time: ${DateTime.now().toString().substring(0, 19)}
 
 Please respond immediately or contact emergency services!
 ''';
 
-    await sendSMS(phoneNumbers: phoneNumbers, message: message);
+    return await sendSMS(phoneNumbers: phoneNumbers, message: message);
   }
 
-  static Future<void> shareLocation({
+  /// Share location via SMS
+  static Future<bool> shareLocation({
     required List<String> phoneNumbers,
     required double latitude,
     required double longitude,
@@ -58,21 +70,21 @@ Please respond immediately or contact emergency services!
     final String message;
     if (isCheckIn) {
       message = '''
-✅ Check-In: I'm Safe
+Check-In: I'm Safe
 
 I'm checking in to let you know I'm okay.
 
-📍 Current Location:
+Current Location:
 $address
 
-🗺️ Google Maps:
+Google Maps:
 $mapsUrl
 
-⏰ Time: ${DateTime.now().toString().substring(0, 19)}
+Time: ${DateTime.now().toString().substring(0, 19)}
 ''';
     } else {
       message = '''
-📍 Live Location Shared
+Live Location Shared
 
 I'm sharing my current location with you.
 
@@ -84,7 +96,7 @@ Shared at: ${DateTime.now().toString().substring(0, 19)}
 ''';
     }
 
-    await sendSMS(phoneNumbers: phoneNumbers, message: message);
+    return await sendSMS(phoneNumbers: phoneNumbers, message: message);
   }
 
   static Future<void> makePhoneCall(String phoneNumber) async {
