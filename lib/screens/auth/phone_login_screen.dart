@@ -24,6 +24,26 @@ class PhoneLoginScreen extends StatefulWidget {
 // Test phone number for App Store review demo mode
 const String _demoPhoneNumber = '+919876543210';
 
+// Country code options
+class CountryCode {
+  final String code;
+  final String flag;
+  final String name;
+  final int maxLength; // Expected phone number length without country code
+
+  const CountryCode({
+    required this.code,
+    required this.flag,
+    required this.name,
+    required this.maxLength,
+  });
+}
+
+const List<CountryCode> _countryCodes = [
+  CountryCode(code: '+91', flag: '🇮🇳', name: 'India', maxLength: 10),
+  CountryCode(code: '+1', flag: '🇺🇸', name: 'USA', maxLength: 10),
+];
+
 class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   final AuthService _authService = AuthService();
   final _phoneController = TextEditingController();
@@ -34,6 +54,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   String? _verificationId;
   String? _error;
   bool _showDemoOption = false; // Show demo mode option on error with test number
+  CountryCode _selectedCountry = _countryCodes[0]; // Default to India
 
   @override
   void initState() {
@@ -51,26 +72,58 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   }
 
   String _formatPhoneNumber(String phone) {
-    // Remove all non-digit characters except +
-    var cleaned = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    // Remove all non-digit characters (no + since we handle country code separately)
+    var cleaned = phone.replaceAll(RegExp(r'[^\d]'), '');
 
-    // Add country code if not present
-    if (!cleaned.startsWith('+')) {
-      // Default to India (+91) if no country code
-      if (cleaned.length == 10) {
-        cleaned = '+91$cleaned';
-      } else {
-        cleaned = '+$cleaned';
-      }
-    }
-    return cleaned;
+    // Add selected country code
+    return '${_selectedCountry.code}$cleaned';
+  }
+
+  Widget _buildCountryCodeDropdown() {
+    return PopupMenuButton<CountryCode>(
+      onSelected: (country) {
+        setState(() => _selectedCountry = country);
+      },
+      offset: const Offset(0, 40),
+      itemBuilder: (context) => _countryCodes.map((country) {
+        return PopupMenuItem<CountryCode>(
+          value: country,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(country.flag, style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 8),
+              Text(country.code, style: const TextStyle(fontWeight: FontWeight.w500)),
+              const SizedBox(width: 8),
+              Text(country.name, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+            ],
+          ),
+        );
+      }).toList(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_selectedCountry.flag, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 4),
+            Text(
+              _selectedCountry.code,
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
+            ),
+            const Icon(Icons.arrow_drop_down, size: 20),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _sendOtp() async {
+    final rawPhone = _phoneController.text.trim().replaceAll(RegExp(r'[^\d]'), '');
     final phone = _formatPhoneNumber(_phoneController.text.trim());
 
-    if (phone.length < 10) {
-      setState(() => _error = 'Please enter a valid phone number');
+    if (rawPhone.length != _selectedCountry.maxLength) {
+      setState(() => _error = 'Please enter a valid ${_selectedCountry.maxLength}-digit phone number');
       return;
     }
 
@@ -225,7 +278,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                 child: Text(
                   widget.subtitle ??
                       (_codeSent
-                          ? 'Enter the 6-digit code sent to ${_phoneController.text}'
+                          ? 'Enter the 6-digit code sent to ${_selectedCountry.code} ${_phoneController.text}'
                           : 'We\'ll send you a verification code'),
                   style: TextStyle(color: Colors.grey[600]),
                   textAlign: TextAlign.center,
@@ -292,14 +345,14 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                 ),
 
               if (!_codeSent) ...[
-                // Phone number input
+                // Phone number input with country code dropdown
                 TextField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
                     labelText: 'Phone Number',
-                    hintText: '+91 98765 43210',
-                    prefixIcon: const Icon(Icons.phone),
+                    hintText: '98765 43210',
+                    prefixIcon: _buildCountryCodeDropdown(),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
